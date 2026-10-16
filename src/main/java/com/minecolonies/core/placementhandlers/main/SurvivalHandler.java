@@ -34,8 +34,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.util.BlockSnapshot;
 import net.neoforged.neoforge.event.level.BlockEvent;
@@ -63,7 +61,6 @@ public class SurvivalHandler implements ISurvivalBlueprintHandler
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
     public boolean canHandle(final Blueprint blueprint, final ClientLevel clientLevel, final Player player, final BlockPos blockPos, final RotationMirror rotMir)
     {
         if (IMinecoloniesAPI.getInstance().getConfig().getServer().blueprintBuildMode.get())
@@ -314,7 +311,7 @@ public class SurvivalHandler implements ISurvivalBlueprintHandler
                 final int chunkZ = z >> 4;
                 final ChunkPos pos = new ChunkPos(chunkX, chunkZ);
 
-                if (ColonyUtils.getOwningColony(world.getChunk(pos.x, pos.z)) != colony.getID())
+                if (ColonyUtils.getOwningColony(world.getChunk(pos.x(), pos.z())) != colony.getID())
                 {
                     return false;
                 }

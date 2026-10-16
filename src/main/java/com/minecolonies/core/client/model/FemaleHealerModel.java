@@ -3,6 +3,7 @@
 // Paste this class into your mod and generate all required imports
 package com.minecolonies.core.client.model;
 
+import com.minecolonies.api.client.render.modeltype.CitizenRenderState;
 import com.minecolonies.api.client.render.modeltype.CitizenModel;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import net.minecraft.client.model.geom.ModelPart;
@@ -12,7 +13,7 @@ import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.world.entity.Pose;
 import org.jetbrains.annotations.NotNull;
 
-public class FemaleHealerModel extends CitizenModel<AbstractEntityCitizen>
+public class FemaleHealerModel extends CitizenModel
 {
 
     public FemaleHealerModel(final ModelPart part)
@@ -129,11 +130,11 @@ public class FemaleHealerModel extends CitizenModel<AbstractEntityCitizen>
     }
 
     @Override
-    public void setupAnim(@NotNull final AbstractEntityCitizen entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch)
+    public void setupAnim(@NotNull final CitizenRenderState state)
     {
-        super.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
-        head.getChild("Hat").visible = displayHat(entity);
-        head.getChild("plagueMask").visible = entity.getPose() != Pose.SLEEPING && isWorking(entity);
-        body.getChild("bag").visible = entity.getPose() != Pose.SLEEPING  && isWorking(entity);
+        super.setupAnim(state);
+        head.getChild("Hat").visible = displayHat(state);
+        head.getChild("plagueMask").visible = state.pose != Pose.SLEEPING && isWorking(state);
+        body.getChild("bag").visible = state.pose != Pose.SLEEPING  && isWorking(state);
     }
 }

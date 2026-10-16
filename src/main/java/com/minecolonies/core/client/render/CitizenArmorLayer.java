@@ -1,213 +1,196 @@
 package com.minecolonies.core.client.render;
 
-import com.minecolonies.api.colony.ICitizenDataView;
-import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
+import com.minecolonies.api.client.render.modeltype.CitizenModel;
+import com.minecolonies.api.client.render.modeltype.CitizenRenderState;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.core.event.ClientEventHandler;
-import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.yggdrasil.ProfileResult;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import net.minecraft.ChatFormatting;
-import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.HumanoidModel;
-import net.minecraft.client.model.SkullModelBase;
 import net.minecraft.client.model.geom.EntityModelSet;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.Sheets;
+import net.minecraft.client.model.object.skull.SkullModelBase;
+import net.minecraft.client.renderer.PlayerSkinRenderCache;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.SkullBlockRenderer;
-import net.minecraft.client.renderer.entity.RenderLayerParent;
-import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.ModelManager;
-import net.minecraft.core.Holder;
+import net.minecraft.client.renderer.entity.ArmorModelSet;
+import net.minecraft.client.renderer.entity.RenderLayerParent;
+import net.minecraft.client.renderer.entity.layers.EquipmentLayerRenderer;
+import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.resources.model.EquipmentClientInfo;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.ItemTags;
-import net.minecraft.util.FastColor;
+import net.minecraft.util.Util;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.item.ArmorItem;
-import net.minecraft.world.item.ArmorMaterial;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.armortrim.ArmorTrim;
-import net.minecraft.world.item.component.DyedItemColor;
 import net.minecraft.world.item.component.ResolvableProfile;
+import net.minecraft.world.item.equipment.Equippable;
 import net.minecraft.world.level.block.SkullBlock;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
-@OnlyIn(Dist.CLIENT)
-public class CitizenArmorLayer<T extends AbstractEntityCitizen, M extends HumanoidModel<T>, A extends HumanoidModel<T>> extends HumanoidArmorLayer<T, M, A>
+/**
+ * Armour layer of the citizens.
+ * <p>
+ * It differs from the vanilla layer in two ways: a citizen can have a display-only armour set that overrides what it
+ * actually wears, and a citizen with a custom player skin renders that skin's head instead of the model head.
+ * <p>
+ * The per-slot drawing is delegated to {@link EquipmentLayerRenderer#renderLayers}, exactly like the vanilla layer does,
+ * so dyes, armour trims, the glint and the inner (leggings) versus outer layer split all keep working unchanged.
+ */
+public class CitizenArmorLayer extends HumanoidArmorLayer<CitizenRenderState, CitizenModel, HumanoidModel<CitizenRenderState>>
 {
-    private final Map<SkullBlock.Type, SkullModelBase> skullModels;
+    private final SkullModelBase               playerSkullModel;
     private final Map<UUID, ResolvableProfile> gameProfileMap = new HashMap<>();
 
-    /**
-     * Set of items except from rendering as they're causing errors
-     */
-    private static Set<Item> disabledFromRendering = new HashSet<>();
+    private final ArmorModelSet<HumanoidModel<CitizenRenderState>> armorModels;
+    private final EquipmentLayerRenderer                           equipmentRenderer;
+    private final PlayerSkinRenderCache                            playerSkinRenderCache;
 
-    public CitizenArmorLayer(RenderLayerParent<T, M> parentLayer, A innerModel, A outerModel, ModelManager modelManager, final EntityModelSet modelSet)
+    /**
+     * Set of items excluded from rendering as they're causing errors.
+     */
+    private static final Set<Item> disabledFromRendering = new HashSet<>();
+
+    public CitizenArmorLayer(final RenderLayerParent<CitizenRenderState, CitizenModel> parentLayer,
+      final ArmorModelSet<HumanoidModel<CitizenRenderState>> armorModels,
+      final EquipmentLayerRenderer equipmentRenderer,
+      final EntityModelSet modelSet,
+      final PlayerSkinRenderCache playerSkinRenderCache)
     {
-        super(parentLayer, innerModel, outerModel, modelManager);
-        this.skullModels = SkullBlockRenderer.createSkullRenderers(modelSet);
+        super(parentLayer, armorModels, equipmentRenderer);
+        this.armorModels = armorModels;
+        this.equipmentRenderer = equipmentRenderer;
+        this.playerSkinRenderCache = playerSkinRenderCache;
+        this.playerSkullModel = SkullBlockRenderer.createModel(modelSet, SkullBlock.Types.PLAYER);
     }
 
     @Override
-    public void render(
-      @NotNull PoseStack poseStack,
-      @NotNull MultiBufferSource bufferSource,
-      int light,
-      @NotNull T citizen,
-      float ignore_1,
-      float ignore_2,
-      float partialTicks,
-      float ignore_4,
-      float headRotY,
-      float headRotX)
+    public void submit(@NotNull final PoseStack poseStack,
+      @NotNull final SubmitNodeCollector submitNodeCollector,
+      final int lightCoords,
+      @NotNull final CitizenRenderState state,
+      final float yRot,
+      final float xRot)
     {
-        if (citizen.getCitizenDataView() == null)
+        if (!state.renderArmor || state.isInvisible)
         {
             return;
         }
 
-        if (citizen.getCitizenDataView().getInventory() == null)
+        if (state.customTextureUUID != null && this.playerSkullModel != null)
         {
-            return;
+            submitCustomSkinHead(poseStack, submitNodeCollector, lightCoords, state, yRot, xRot);
         }
 
-        if (citizen.isInvisible())
-        {
-            return;
-        }
-
-        final ICitizenDataView citizenDataView = citizen.getCitizenDataView();
-        if (citizenDataView.getCustomTextureUUID() != null )
-        {
-            final UUID textureUUID = citizenDataView.getCustomTextureUUID();
-            final ResolvableProfile gameProfile = gameProfileMap.get(textureUUID);
-            if (gameProfile != null)
-            {
-                poseStack.pushPose();
-                poseStack.scale(1.0F, -1.0F, -1.0F);
-
-                final CompoundTag compoundTag = new CompoundTag();
-                compoundTag.putUUID("Id", citizenDataView.getCustomTextureUUID());
-
-                SkullBlock.Type type = SkullBlock.Types.PLAYER;
-                SkullModelBase skullmodelbase = this.skullModels.get(type);
-                RenderType rendertype = SkullBlockRenderer.getRenderType(type, gameProfile);
-
-                poseStack.rotateAround(Axis.YP.rotationDegrees(180), 0.0f, 0.0f, 0.0f);
-                poseStack.scale(-1.0F, -1.0F, 1.0F);
-                VertexConsumer vertexconsumer = bufferSource.getBuffer(rendertype);
-                skullmodelbase.setupAnim(0f, headRotY, headRotX);
-                skullmodelbase.renderToBuffer(poseStack, vertexconsumer, light, OverlayTexture.NO_OVERLAY);
-
-                poseStack.popPose();
-            }
-            else
-            {
-                gameProfileMap.put(citizenDataView.getCustomTextureUUID(), new ResolvableProfile(new GameProfile(textureUUID, "mcoltexturequery")));
-                Util.backgroundExecutor().execute(() ->
-                {
-                    Minecraft minecraft = Minecraft.getInstance();
-                    final ProfileResult profile = minecraft.getMinecraftSessionService().fetchProfile(textureUUID, true);
-                    if (profile != null)
-                    {
-                        minecraft.submit(() -> gameProfileMap.put(textureUUID, new ResolvableProfile(profile.profile())));
-                    }
-                });
-            }
-        }
-        this.renderArmorPiece(poseStack, bufferSource, citizen, EquipmentSlot.CHEST, light, this.getArmorModel(EquipmentSlot.CHEST), citizenDataView);
-        this.renderArmorPiece(poseStack, bufferSource, citizen, EquipmentSlot.LEGS, light, this.getArmorModel(EquipmentSlot.LEGS), citizenDataView);
-        this.renderArmorPiece(poseStack, bufferSource, citizen, EquipmentSlot.FEET, light, this.getArmorModel(EquipmentSlot.FEET), citizenDataView);
-        this.renderArmorPiece(poseStack, bufferSource, citizen, EquipmentSlot.HEAD, light, this.getArmorModel(EquipmentSlot.HEAD), citizenDataView);
+        // Same slot order as the vanilla layer, so overlapping pieces keep their draw order.
+        submitArmorPiece(poseStack, submitNodeCollector, lightCoords, state, state.chestEquipment, EquipmentSlot.CHEST);
+        submitArmorPiece(poseStack, submitNodeCollector, lightCoords, state, state.legsEquipment, EquipmentSlot.LEGS);
+        submitArmorPiece(poseStack, submitNodeCollector, lightCoords, state, state.feetEquipment, EquipmentSlot.FEET);
+        submitArmorPiece(poseStack, submitNodeCollector, lightCoords, state, state.headEquipment, EquipmentSlot.HEAD);
     }
 
-    private void renderArmorPiece(PoseStack poseStack, MultiBufferSource bufferSource, T citizen, EquipmentSlot equipmentSlot, int light, A armor, final ICitizenDataView citizenDataView)
+    /**
+     * Draw one armour piece, guarding against broken modded armour the same way the old layer did.
+     */
+    private void submitArmorPiece(final PoseStack poseStack,
+      final SubmitNodeCollector submitNodeCollector,
+      final int lightCoords,
+      final CitizenRenderState state,
+      final ItemStack itemStack,
+      final EquipmentSlot slot)
     {
-        ItemStack itemstack = citizenDataView.getDisplayArmor(equipmentSlot);
-        if (itemstack.isEmpty())
+        if (itemStack.isEmpty() || disabledFromRendering.contains(itemStack.getItem()))
         {
-            itemstack = citizen.getItemBySlot(equipmentSlot);
+            return;
         }
-        Item armorItem = itemstack.getItem();
 
-        if (armorItem instanceof ArmorItem armoritem && !disabledFromRendering.contains(armorItem))
+        final Equippable equippable = itemStack.get(DataComponents.EQUIPPABLE);
+        if (equippable == null || equippable.slot() != slot || equippable.assetId().isEmpty())
         {
-            try
+            return;
+        }
+
+        try
+        {
+            final EquipmentClientInfo.LayerType layerType = slot == EquipmentSlot.LEGS
+                                                             ? EquipmentClientInfo.LayerType.HUMANOID_LEGGINGS
+                                                             : EquipmentClientInfo.LayerType.HUMANOID;
+
+            this.equipmentRenderer.renderLayers(layerType,
+              equippable.assetId().get(),
+              this.armorModels.get(slot),
+              state,
+              itemStack,
+              poseStack,
+              submitNodeCollector,
+              lightCoords,
+              state.outlineColor);
+        }
+        catch (final Exception e)
+        {
+            Log.getLogger().warn("Error rendering armor: " + itemStack + " report to the armor's mod.", e);
+            disabledFromRendering.add(itemStack.getItem());
+            ClientEventHandler.extraItemTooltips.put(itemStack.getItem(),
+              Component.literal("This armor is causing errors when rendering on citizens, check your latest.log and report to the respective armor mod.")
+                .withStyle(ChatFormatting.RED));
+        }
+    }
+
+    /**
+     * Render the head of the player skin a citizen was given, in place of the model head.
+     */
+    private void submitCustomSkinHead(final PoseStack poseStack,
+      final SubmitNodeCollector submitNodeCollector,
+      final int lightCoords,
+      final CitizenRenderState state,
+      final float yRot,
+      final float xRot)
+    {
+        final UUID textureUUID = state.customTextureUUID;
+        final ResolvableProfile gameProfile = gameProfileMap.get(textureUUID);
+        if (gameProfile == null)
+        {
+            // Request the profile once and draw nothing until it arrives.
+            gameProfileMap.put(textureUUID, ResolvableProfile.createUnresolved(textureUUID));
+            Util.backgroundExecutor().execute(() ->
             {
-                if (citizenDataView.getDisplayArmor(equipmentSlot).isEmpty())
+                final Minecraft minecraft = Minecraft.getInstance();
+                final ProfileResult profile = minecraft.services().sessionService().fetchProfile(textureUUID, true);
+                if (profile != null)
                 {
-                    super.renderArmorPiece(poseStack, bufferSource, citizen, equipmentSlot, light, armor);
+                    minecraft.submit(() -> gameProfileMap.put(textureUUID, ResolvableProfile.createResolved(profile.profile())));
                 }
-                else if (armoritem.getEquipmentSlot() == equipmentSlot)
-                {
-                    this.getParentModel().copyPropertiesTo(armor);
-                    this.setPartVisibility(armor, equipmentSlot);
-                    net.minecraft.client.model.Model model = getArmorModelHook(citizen, itemstack, equipmentSlot, armor);
-                    boolean flag = this.usesInnerModel(equipmentSlot);
-                    ArmorMaterial armormaterial = armoritem.getMaterial().value();
-
-                    int i = itemstack.is(ItemTags.DYEABLE) ? FastColor.ARGB32.opaque(DyedItemColor.getOrDefault(itemstack, -6265536)) : -1;
-
-                    for (ArmorMaterial.Layer armormaterial$layer : armormaterial.layers())
-                    {
-                        int j = armormaterial$layer.dyeable() ? i : -1;
-                        var texture = net.neoforged.neoforge.client.ClientHooks.getArmorTexture(citizen, itemstack, armormaterial$layer, flag, equipmentSlot);
-                        this.renderModel(poseStack, bufferSource, light, model, j, texture);
-                    }
-
-                    ArmorTrim armortrim = itemstack.get(DataComponents.TRIM);
-                    if (armortrim != null)
-                    {
-                        this.renderTrim(armoritem.getMaterial(), poseStack, bufferSource, light, armortrim, model, flag);
-                    }
-
-                    if (itemstack.hasFoil())
-                    {
-                        this.renderGlint(poseStack, bufferSource, light, model);
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Log.getLogger().warn("Error rendering armor: " + itemstack + " report to the armor's mod.", e);
-                disabledFromRendering.add(armorItem);
-                ClientEventHandler.extraItemTooltips.put(armorItem,
-                    Component.literal("This armor is causing errors when rendering on citizens, check your latest.log and report to the respective armor mod.").withStyle(
-                        ChatFormatting.RED));
-            }
+            });
+            return;
         }
-    }
 
-    private void renderModel(PoseStack poseStack, MultiBufferSource bufferSource, int light, net.minecraft.client.model.Model armorItem, int color, ResourceLocation armorResource) {
-        VertexConsumer vertexconsumer = bufferSource.getBuffer(RenderType.armorCutoutNoCull(armorResource));
-        armorItem.renderToBuffer(poseStack, vertexconsumer, light, OverlayTexture.NO_OVERLAY, color);
-    }
+        poseStack.pushPose();
+        poseStack.scale(1.0F, -1.0F, -1.0F);
+        poseStack.rotateAround(Axis.YP.rotationDegrees(180), 0.0f, 0.0f, 0.0f);
+        poseStack.scale(-1.0F, -1.0F, 1.0F);
 
-    private void renderGlint(PoseStack poseStack, MultiBufferSource bufferSource, int light, net.minecraft.client.model.Model model)
-    {
-        model.renderToBuffer(poseStack, bufferSource.getBuffer(RenderType.armorEntityGlint()), light, OverlayTexture.NO_OVERLAY);
-    }
+        final RenderType renderType = this.playerSkinRenderCache.getOrDefault(gameProfile).renderType();
 
-    private void renderTrim(Holder<ArmorMaterial> armorMaterial, PoseStack p_289687_, MultiBufferSource p_289643_, int p_289683_, ArmorTrim p_289692_, net.minecraft.client.model.Model p_289663_, boolean p_289651_)
-    {
-        TextureAtlasSprite textureatlassprite = this.armorTrimAtlas
-                                                  .getSprite(p_289651_ ? p_289692_.innerTexture(armorMaterial) : p_289692_.outerTexture(armorMaterial));
-        VertexConsumer vertexconsumer = textureatlassprite.wrap(p_289643_.getBuffer(Sheets.armorTrimsSheet(p_289692_.pattern().value().decal())));
-        p_289663_.renderToBuffer(p_289687_, vertexconsumer, p_289683_, OverlayTexture.NO_OVERLAY);
+        // The head has to follow the citizen's head rotation, so the model state is built here instead of using
+        // SkullBlockRenderer#submitSkull, which only carries the animation position.
+        final SkullModelBase.State modelState = new SkullModelBase.State();
+        modelState.animationPos = 0f;
+        modelState.yRot = yRot;
+        modelState.xRot = xRot;
+        submitNodeCollector.submitModel(this.playerSkullModel, modelState, poseStack, renderType,
+          lightCoords, OverlayTexture.NO_OVERLAY, state.outlineColor, null);
+
+        poseStack.popPose();
     }
 }

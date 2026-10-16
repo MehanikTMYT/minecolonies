@@ -17,7 +17,7 @@ import com.minecolonies.core.network.messages.server.colony.ColonyStructureStyle
 import com.minecolonies.core.network.messages.server.colony.ColonyTextureStyleMessage;
 import com.minecolonies.core.network.messages.server.colony.TeamColonyColorChangeMessage;
 import net.minecraft.ChatFormatting;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -100,7 +100,7 @@ public class WindowMainPage extends AbstractWindowTownHall
 
         registerButton(BUTTON_COLONY_SWITCH_STYLE, this::switchPack);
 
-        findPaneOfTypeByID(BUTTON_COLONY_SWITCH_STYLE, ButtonImage.class).setText(Component.literal(building.getColony().getStructurePack()));
+        findPaneOfTypeByID(BUTTON_COLONY_SWITCH_STYLE, ButtonImage.class).setText(com.ldtteam.structurize.client.gui.PackNames.pack(building.getColony().getStructurePack()));
         registerButton(BUTTON_BANNER_PICKER, this::openBannerPicker);
         registerButton(BUTTON_RESET_TEXTURE, this::resetTextureStyle);
 
@@ -112,6 +112,14 @@ public class WindowMainPage extends AbstractWindowTownHall
         this.initialNamePackIndex = nameStyleDropDownList.getSelectedIndex();
 
         checkFeatureUnlock();
+    }
+
+    /**
+     * @return the translation of key when one exists, otherwise the raw id.
+     */
+    private static MutableComponent translatedOr(final String key, final String fallback)
+    {
+        return net.minecraft.client.resources.language.I18n.exists(key) ? Component.translatable(key) : Component.literal(fallback);
     }
 
     /**
@@ -151,6 +159,12 @@ public class WindowMainPage extends AbstractWindowTownHall
             {
                 if (index >= 0 && index < textColors.size())
                 {
+                    // PORT(26.1): vanilla's color.minecraft.<name> keys (Minecraft ships them for every language)
+                    final String key = "color.minecraft." + textColors.get(index).getName();
+                    if (net.minecraft.client.resources.language.I18n.exists(key))
+                    {
+                        return Component.translatable(key);
+                    }
                     final String colorName = textColors.get(index).getName().replace("_", " ");
                     return Component.literal(colorName.substring(0, 1).toUpperCase(Locale.US) + colorName.substring(1));
                 }
@@ -171,7 +185,7 @@ public class WindowMainPage extends AbstractWindowTownHall
             @Override
             public MutableComponent getLabel(final int index)
             {
-                return Component.literal(TEXTURE_PACKS.get(index));
+                return translatedOr("com.minecolonies.port26.texturepack." + TEXTURE_PACKS.get(index), TEXTURE_PACKS.get(index));
             }
         });
 
@@ -188,7 +202,7 @@ public class WindowMainPage extends AbstractWindowTownHall
             @Override
             public MutableComponent getLabel(final int index)
             {
-                return Component.literal(buildingView.getColony().getNameFileIds().get(index));
+                return translatedOr("com.minecolonies.port26.namepack." + buildingView.getColony().getNameFileIds().get(index), buildingView.getColony().getNameFileIds().get(index));
             }
         });
     }

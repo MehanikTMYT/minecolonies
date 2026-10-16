@@ -27,25 +27,25 @@ public class CommandToggleDebug implements IMCOPCommand
         GameProfile profile;
         try
         {
-            profile = GameProfileArgument.getGameProfiles(context, PLAYERNAME_ARG).stream().findFirst().orElse(null);
+            profile = GameProfileArgument.getGameProfiles(context, PLAYERNAME_ARG).stream().findFirst().map(p -> new GameProfile(p.id(), p.name())).orElse(null);
         }
         catch (CommandSyntaxException e)
         {
             return 0;
         }
 
-        final boolean enabled = DebugPlayerManager.toggleDebugModeFor(profile.getId());
+        final boolean enabled = DebugPlayerManager.toggleDebugModeFor(profile.id());
 
         if (enabled)
         {
-            context.getSource().sendSuccess(() -> Component.literal("Enabled minecolonies debugging for:" + profile.getName()).withStyle(ChatFormatting.GREEN), true);
+            context.getSource().sendSuccess(() -> Component.literal("Enabled minecolonies debugging for:" + profile.name()).withStyle(ChatFormatting.GREEN), true);
         }
         else
         {
-            context.getSource().sendSuccess(() -> Component.literal("Disabled minecolonies debugging for:" + profile.getName()).withStyle(ChatFormatting.RED), true);
+            context.getSource().sendSuccess(() -> Component.literal("Disabled minecolonies debugging for:" + profile.name()).withStyle(ChatFormatting.RED), true);
         }
 
-        final ServerPlayer player = context.getSource().getServer().getPlayerList().getPlayer(profile.getId());
+        final ServerPlayer player = context.getSource().getServer().getPlayerList().getPlayer(profile.id());
         if (player != null)
         {
             if (enabled)

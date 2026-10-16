@@ -34,7 +34,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Tuple;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -119,7 +119,7 @@ public class WindowBuildBuilding extends AbstractWindowSkeleton
      */
     public WindowBuildBuilding(final IColonyView c, final IBuildingView building)
     {
-        super(new ResourceLocation(Constants.MOD_ID, "gui/windowbuildbuilding.xml"));
+        super(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "gui/windowbuildbuilding.xml"));
         this.building = building;
 
         initStyleNavigation();
@@ -363,7 +363,7 @@ public class WindowBuildBuilding extends AbstractWindowSkeleton
             return;
         }
         final int hashCode = res.getComponentsPatch().hashCode();
-        final String key = res.getDescriptionId() + "-" + hashCode;
+        final String key = res.getItem().getDescriptionId() + "-" + hashCode;
         ItemStorage resource = resources.get(key);
         if (resource == null)
         {
@@ -399,7 +399,7 @@ public class WindowBuildBuilding extends AbstractWindowSkeleton
             {
                 if (index >= 0 && index < styles.size())
                 {
-                    return Component.literal(styles.get(index));
+                    return com.ldtteam.structurize.client.gui.PackNames.pack(styles.get(index));
                 }
                 return Component.empty();
             }

@@ -6,7 +6,7 @@ import com.minecolonies.core.network.messages.client.VanillaParticleMessage;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ParticleUtils;
 import net.minecraft.util.RandomSource;
@@ -16,6 +16,7 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SimpleWaterloggedBlock;
@@ -52,7 +53,7 @@ public class MinecoloniesFarmland extends AbstractBlockMinecolonies<Minecolonies
     public static final    IntegerProperty MOISTURE     = BlockStateProperties.MOISTURE;
     protected final VoxelShape shape;
 
-    private final ResourceLocation    blockId;
+    private final Identifier    blockId;
 
     /**
      * If should behave waterlogged.
@@ -63,7 +64,7 @@ public class MinecoloniesFarmland extends AbstractBlockMinecolonies<Minecolonies
     {
         super(BlockBehaviour.Properties.of().mapColor(MapColor.DIRT).randomTicks().strength(0.6F).sound(SoundType.GRAVEL).isViewBlocking((s,g,p) -> true).isSuffocating((s,g,p) -> true));
         this.registerDefaultState(this.stateDefinition.any().setValue(MOISTURE, 0));
-        this.blockId = new ResourceLocation(Constants.MOD_ID, blockName);
+        this.blockId = Identifier.fromNamespaceAndPath(Constants.MOD_ID, blockName);
         this.registerDefaultState(this.stateDefinition.any().setValue(WATERLOGGED, Boolean.valueOf(waterLogged)));
 
         this.shape = Block.box(0.0, 0.0, 0.0, 16.0, height, 16.0);
@@ -72,18 +73,19 @@ public class MinecoloniesFarmland extends AbstractBlockMinecolonies<Minecolonies
 
     @NotNull
     @Override
-    public BlockState updateShape(@NotNull BlockState state, @NotNull Direction direction, @NotNull BlockState newState, @NotNull LevelAccessor level, @NotNull BlockPos pos, @NotNull BlockPos neighborPos)
+    protected BlockState updateShape(@NotNull BlockState state, @NotNull LevelReader level, @NotNull ScheduledTickAccess ticks, @NotNull BlockPos pos,
+      @NotNull Direction direction, @NotNull BlockPos neighborPos, @NotNull BlockState newState, @NotNull RandomSource random)
     {
         if (direction == Direction.UP && !state.canSurvive(level, pos))
         {
-            level.scheduleTick(pos, this, 1);
+            ticks.scheduleTick(pos, this, 1);
         }
         if (state.getValue(WATERLOGGED) && waterLogged)
         {
-            level.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
+            ticks.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
         }
 
-        return super.updateShape(state, direction, newState, level, pos, neighborPos);
+        return super.updateShape(state, level, ticks, pos, direction, neighborPos, newState, random);
     }
 
     @Override
@@ -169,9 +171,9 @@ public class MinecoloniesFarmland extends AbstractBlockMinecolonies<Minecolonies
     }
 
     @Override
-    public void fallOn(Level level, @NotNull BlockState state, @NotNull BlockPos pos, @NotNull Entity entity, float light)
+    public void fallOn(Level level, @NotNull BlockState state, @NotNull BlockPos pos, @NotNull Entity entity, double light)
     {
-        if (!level.isClientSide && CommonHooks.onFarmlandTrample(level, pos, Blocks.DIRT.defaultBlockState(), light, entity))
+        if (level instanceof ServerLevel serverLevel && CommonHooks.onFarmlandTrample(serverLevel, pos, Blocks.DIRT.defaultBlockState(), light, entity))
         {
             turnToDirt(entity, state, level, pos);
         }
@@ -222,7 +224,7 @@ public class MinecoloniesFarmland extends AbstractBlockMinecolonies<Minecolonies
     }
 
     @Override
-    public ResourceLocation getRegistryName()
+    public Identifier getRegistryName()
     {
         return blockId;
     }

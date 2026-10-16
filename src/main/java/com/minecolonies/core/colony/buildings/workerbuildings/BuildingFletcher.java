@@ -11,6 +11,8 @@ import com.minecolonies.core.colony.buildings.modules.AbstractCraftingBuildingMo
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.*;
+import net.minecraft.world.item.equipment.EquipmentAssets;
+import net.minecraft.world.item.equipment.Equippable;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
@@ -80,8 +82,19 @@ public class BuildingFletcher extends AbstractBuilding
             final Optional<Boolean> isRecipeAllowed = CraftingUtils.isRecipeCompatibleBasedOnTags(recipe, CRAFTING_FLETCHER);
             if (isRecipeAllowed.isPresent()) return isRecipeAllowed.get();
 
-            final Item output = recipe.getPrimaryOutput().getItem();
-            return output instanceof ArrowItem || (output instanceof ArmorItem armorItem && recipe.getPrimaryOutput().has(DataComponents.DYED_COLOR) && armorItem.getMaterial() == ArmorMaterials.LEATHER);
+            final ItemStack primaryOutput = recipe.getPrimaryOutput();
+            final Item output = primaryOutput.getItem();
+            if (output instanceof ArrowItem)
+            {
+                return true;
+            }
+
+            // Leather armor is no longer a dedicated item class; it is recognized by the equipment asset it renders with.
+            final Equippable equippable = primaryOutput.get(DataComponents.EQUIPPABLE);
+            return equippable != null
+                     && equippable.slot().isArmor()
+                     && primaryOutput.has(DataComponents.DYED_COLOR)
+                     && equippable.assetId().filter(EquipmentAssets.LEATHER::equals).isPresent();
         }
     }
 

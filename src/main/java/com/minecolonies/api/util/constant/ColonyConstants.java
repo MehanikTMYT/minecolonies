@@ -2,10 +2,8 @@ package com.minecolonies.api.util.constant;
 
 import com.minecolonies.api.colony.IColony;
 import net.minecraft.server.level.TicketType;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.scores.Scoreboard;
 
-import java.util.Comparator;
 import java.util.Random;
 
 /**
@@ -25,14 +23,24 @@ public final class ColonyConstants
     public static final Random rand = new Random();
 
     /**
-     * Constant string id of our ticket type.
+     * Gets the persistent MineColonies chunk ticket type.
+     *
+     * @return the registered ticket type
      */
-    private static final String TICKET_ID = Constants.MOD_ID + ":" + "initial_chunkload";
+    public static TicketType keepLoadedType()
+    {
+        return ModTicketTypes.KEEP_LOADED.get();
+    }
 
     /**
-     * Specific ticket type for minecolonies tickets.
+     * Gets the short-lived post-teleport chunk ticket type.
+     *
+     * @return the registered ticket type
      */
-    public static final TicketType<ChunkPos> KEEP_LOADED_TYPE = TicketType.create(TICKET_ID, Comparator.comparingLong(ChunkPos::toLong));
+    public static TicketType postTeleportType()
+    {
+        return ModTicketTypes.POST_TELEPORT.get();
+    }
 
     //  Settings
     /**

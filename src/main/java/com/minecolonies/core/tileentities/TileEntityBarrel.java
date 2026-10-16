@@ -1,5 +1,8 @@
 package com.minecolonies.core.tileentities;
 
+import com.minecolonies.api.util.ValueIOUtils;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
 import com.minecolonies.api.blocks.AbstractBlockBarrel;
 import com.minecolonies.api.blocks.ModBlocks;
 import com.minecolonies.api.colony.IColonyManager;
@@ -68,7 +71,7 @@ public class TileEntityBarrel extends AbstractTileEntityBarrel implements ITicka
     {
         final Level world = this.getLevel();
 
-        if (!world.isClientSide && (world.getGameTime() % (world.random.nextInt(AVERAGE_TICKS * 2) + 1) == 0))
+        if (!world.isClientSide() && (world.getGameTime() % (world.getRandom().nextInt(AVERAGE_TICKS * 2) + 1) == 0))
         {
             this.updateTick(world, this.getBlockPos(), world.getBlockState(this.getBlockPos()), new Random());
         }
@@ -202,9 +205,19 @@ public class TileEntityBarrel extends AbstractTileEntityBarrel implements ITicka
     }
 
     @Override
-    public void saveAdditional(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
+    protected void saveAdditional(@NotNull final ValueOutput output)
     {
-        super.saveAdditional(compound, provider);
+        super.saveAdditional(output);
+        final CompoundTag saveTag = new CompoundTag();
+        saveAdditionalTag(saveTag, ValueIOUtils.registries(this.level));
+        ValueIOUtils.writeAsTag(output, saveTag);
+    }
+
+    /**
+     * Writes the colony save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void saveAdditionalTag(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
+    {
 
         compound.putInt("items", this.items);
         compound.putInt("timer", this.timer);
@@ -212,12 +225,20 @@ public class TileEntityBarrel extends AbstractTileEntityBarrel implements ITicka
     }
 
     @Override
-    public void loadAdditional(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
+    protected void loadAdditional(@NotNull final ValueInput input)
     {
-        super.loadAdditional(compound, provider);
-        this.items = compound.getInt("items");
-        this.timer = compound.getInt("timer");
-        this.done = compound.getBoolean("done");
+        super.loadAdditional(input);
+        loadAdditionalTag(ValueIOUtils.readAsTag(input), input.lookup());
+    }
+
+    /**
+     * Reads the colony save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void loadAdditionalTag(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
+    {
+        this.items = compound.getIntOr("items", 0);
+        this.timer = compound.getIntOr("timer", 0);
+        this.done = compound.getBooleanOr("done", false);
     }
 
     @Override
@@ -230,14 +251,13 @@ public class TileEntityBarrel extends AbstractTileEntityBarrel implements ITicka
     @Override
     public CompoundTag getUpdateTag(@NotNull final HolderLookup.Provider provider)
     {
-        return saveWithId(provider);
+        return saveWithoutMetadata(provider);
     }
 
     @Override
-    public void onDataPacket(final Connection net, final ClientboundBlockEntityDataPacket packet, @NotNull final HolderLookup.Provider provider)
+    public void onDataPacket(final Connection net, @NotNull final ValueInput input)
     {
-        final CompoundTag compound = packet.getTag();
-        this.loadAdditional(compound, provider);
+        this.loadAdditional(input);
         setChanged();
     }
 
@@ -251,11 +271,11 @@ public class TileEntityBarrel extends AbstractTileEntityBarrel implements ITicka
     }
 
     @Override
-    public final void handleUpdateTag(final CompoundTag tag, @NotNull final HolderLookup.Provider provider)
+    public final void handleUpdateTag(@NotNull final ValueInput input)
     {
-        this.items = tag.getInt("items");
-        this.timer = tag.getInt("timer");
-        this.done = tag.getBoolean("done");
+        this.items = input.getIntOr("items", 0);
+        this.timer = input.getIntOr("timer", 0);
+        this.done = input.getBooleanOr("done", false);
     }
 
     /**

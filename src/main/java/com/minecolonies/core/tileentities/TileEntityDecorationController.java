@@ -1,5 +1,8 @@
 package com.minecolonies.core.tileentities;
 
+import com.minecolonies.api.util.ValueIOUtils;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
 import com.ldtteam.structurize.api.IRotatableBlockEntity;
 import com.ldtteam.structurize.api.RotationMirror;
 import com.ldtteam.structurize.blockentities.interfaces.IBlueprintDataProviderBE;
@@ -143,43 +146,51 @@ public class TileEntityDecorationController extends BlockEntity implements IBlue
     public void readSchematicDataFromNBT(CompoundTag compound)
     {
         IBlueprintDataProviderBE.super.readSchematicDataFromNBT(compound);
-        final CompoundTag blueprintDataProvider = compound.getCompound(TAG_BLUEPRINTDATA);
+        final CompoundTag blueprintDataProvider = compound.getCompoundOrEmpty(TAG_BLUEPRINTDATA);
 
-        this.packName = blueprintDataProvider.getString(TAG_PACK);
-        this.schematicPath = blueprintDataProvider.getString(TAG_PATH);
+        this.packName = blueprintDataProvider.getStringOr(TAG_PACK, "");
+        this.schematicPath = blueprintDataProvider.getStringOr(TAG_PATH, "");
     }
 
     @Override
-    public void loadAdditional(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
+    protected void loadAdditional(@NotNull final ValueInput input)
     {
-        super.loadAdditional(compound, provider);
+        super.loadAdditional(input);
+        loadAdditionalTag(ValueIOUtils.readAsTag(input), input.lookup());
+    }
+
+    /**
+     * Reads the colony save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void loadAdditionalTag(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
+    {
         IBlueprintDataProviderBE.super.readSchematicDataFromNBT(compound);
-        if (compound.contains(TAG_ROTATION_MIRROR, Tag.TAG_BYTE))
+        if (compound.contains(TAG_ROTATION_MIRROR))
         {
-            this.rotationMirror = RotationMirror.values()[compound.getByte(TAG_ROTATION_MIRROR)];
+            this.rotationMirror = RotationMirror.values()[compound.getByteOr(TAG_ROTATION_MIRROR, (byte) 0)];
         }
         else
         {
             // TODO: remove this later (data break introduced in 1.20.4) because of blueprint data
-            this.rotationMirror = RotationMirror.of(Rotation.values()[compound.getInt(TAG_ROTATION)], compound.getBoolean(TAG_MIRROR) ? Mirror.FRONT_BACK : Mirror.NONE);
+            this.rotationMirror = RotationMirror.of(Rotation.values()[compound.getIntOr(TAG_ROTATION, 0)], compound.getBooleanOr(TAG_MIRROR, false) ? Mirror.FRONT_BACK : Mirror.NONE);
         }
 
         // inexplicably IBlueprintDataProviderBE does not load the pack/path even though it saved them
-        this.packName = compound.getCompound(TAG_BLUEPRINTDATA).getString(TAG_PACK);
-        this.schematicPath = compound.getCompound(TAG_BLUEPRINTDATA).getString(TAG_PATH);
+        this.packName = compound.getCompoundOrEmpty(TAG_BLUEPRINTDATA).getStringOr(TAG_PACK, "");
+        this.schematicPath = compound.getCompoundOrEmpty(TAG_BLUEPRINTDATA).getStringOr(TAG_PATH, "");
 
         // the rest of this is backwards compat code that can be removed at some point (maybe even now)
         if(compound.contains(TAG_PATH) && StringUtils.isEmpty(this.schematicName))
         {
-            this.schematicPath = compound.getString(TAG_PATH);
+            this.schematicPath = compound.getStringOr(TAG_PATH, "");
         }
         if(compound.contains(TAG_PACK) && StringUtils.isEmpty(this.packName))
         {
-            this.packName = compound.getString(TAG_PACK);
+            this.packName = compound.getStringOr(TAG_PACK, "");
         }
         if(compound.contains(TAG_NAME) && StringUtils.isEmpty(this.schematicName))
         {
-            this.schematicName = compound.getString(TAG_NAME);
+            this.schematicName = compound.getStringOr(TAG_NAME, "");
             if (this.schematicPath == null || this.schematicPath.isEmpty())
             {
                 //Setup for recovery
@@ -196,9 +207,19 @@ public class TileEntityDecorationController extends BlockEntity implements IBlue
     }
 
     @Override
-    public void saveAdditional(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
+    protected void saveAdditional(@NotNull final ValueOutput output)
     {
-        super.saveAdditional(compound, provider);
+        super.saveAdditional(output);
+        final CompoundTag saveTag = new CompoundTag();
+        saveAdditionalTag(saveTag, ValueIOUtils.registries(this.level));
+        ValueIOUtils.writeAsTag(output, saveTag);
+    }
+
+    /**
+     * Writes the colony save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void saveAdditionalTag(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
+    {
         writeSchematicDataToNBT(compound);
         compound.putByte(TAG_ROTATION_MIRROR, (byte) this.rotationMirror.ordinal());
     }
@@ -232,14 +253,13 @@ public class TileEntityDecorationController extends BlockEntity implements IBlue
     @Override
     public CompoundTag getUpdateTag(@NotNull final HolderLookup.Provider provider)
     {
-        return this.saveWithId(provider);
+        return this.saveWithoutMetadata(provider);
     }
 
     @Override
-    public void onDataPacket(final Connection net, final ClientboundBlockEntityDataPacket packet, @NotNull final HolderLookup.Provider provider)
+    public void onDataPacket(final Connection net, @NotNull final ValueInput input)
     {
-        final CompoundTag compound = packet.getTag();
-        this.loadAdditional(compound, provider);
+        this.loadAdditional(input);
     }
 
     @Override

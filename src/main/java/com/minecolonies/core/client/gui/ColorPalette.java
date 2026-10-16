@@ -1,19 +1,17 @@
 package com.minecolonies.core.client.gui;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.DyeColor;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * A custom "widget" of sorts that lays out minecraft's DyeColors as buttons to choose from.
  */
-@OnlyIn(Dist.CLIENT)
 public class ColorPalette
 {
     public static final DyeColor[] DYES = DyeColor.values();
@@ -58,11 +56,9 @@ public class ColorPalette
     }
 
     /** Used as a function processor to add the widgets to the screen */
-    @OnlyIn(Dist.CLIENT)
     public interface IWidgetAdder { void onBuild(Button toAdd); }
 
     /** A custom function to call when the color has been changed. Edit via the onchange field. */
-    @OnlyIn(Dist.CLIENT)
     public interface ChangeEvent { void onChange(DyeColor now); }
 
     public DyeColor getSelected() { return selected; }
@@ -80,13 +76,13 @@ public class ColorPalette
         }
 
         @Override
-        public void renderWidget(final GuiGraphics stack, int mouseX, int mouseY, float partialTicks)
+        protected void extractContents(final GuiGraphicsExtractor stack, final int mouseX, final int mouseY, final float partialTicks)
         {
             this.active = selected != this.color;
             int color = this.color.getTextColor();
             boolean pressed = selected == this.color;
 
-            this.fillButton(stack, 0, 0, 0, 0, isHovered ? 0xFFFFFF : pressed ? brighten(color, 0.5F) : 0x0);
+            this.fillButton(stack, 0, 0, 0, 0, isHoveredOrFocused() ? 0xFFFFFF : pressed ? brighten(color, 0.5F) : 0x0);
             this.fillButton(stack,1, 1, 1, 1, brighten(color, 0.8F));
 
             if (pressed)
@@ -104,7 +100,7 @@ public class ColorPalette
         }
 
         @Override
-        public void onPress ()
+        public void onPress(final InputWithModifiers input)
         {
             selected = this.color;
             onchange.onChange(selected);
@@ -118,7 +114,7 @@ public class ColorPalette
          * @param r the right offset
          * @param color the color to fill with, without alpha
          */
-        private void fillButton(final GuiGraphics stack, int t, int l, int b, int r, int color)
+        private void fillButton(final GuiGraphicsExtractor stack, int t, int l, int b, int r, int color)
         {
             color += 255 << 24;
             stack.fill(

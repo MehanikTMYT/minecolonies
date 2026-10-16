@@ -23,7 +23,7 @@ public class ModModelTypeInitializer
         ModModelTypes.SETTLER = new SimpleModelType(ModModelTypes.SETTLER_ID, 3, new MaleSettlerModel(context.bakeLayer(ClientRegistryHandler.MALE_SETTLER)), new FemaleSettlerModel(context.bakeLayer(ClientRegistryHandler.FEMALE_SETTLER)));
         reg.register(ModModelTypes.SETTLER);
 
-        ModModelTypes.CUSTOM = new SimpleModelType(ModModelTypes.CUSTOM_ID, 1, new CitizenModel<>(context.bakeLayer(ModelLayers.PLAYER)), null);
+        ModModelTypes.CUSTOM = new SimpleModelType(ModModelTypes.CUSTOM_ID, 1, new CitizenModel(context.bakeLayer(ModelLayers.PLAYER)), null);
         reg.register(ModModelTypes.CUSTOM);
 
         ModModelTypes.CITIZEN = new SimpleModelType(ModModelTypes.CITIZEN_ID, 3, new MaleCitizenModel(context.bakeLayer(ClientRegistryHandler.MALE_CITIZEN)), new FemaleCitizenModel(context.bakeLayer(ClientRegistryHandler.FEMALE_CITIZEN)));

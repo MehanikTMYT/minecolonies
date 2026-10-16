@@ -1,23 +1,27 @@
 package com.minecolonies.core.client.render;
 
+import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.core.client.render.cavalry.CavalryHorseRenderState;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.entity.layers.RenderLayer;
-import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.model.animal.equine.HorseModel;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
-import net.minecraft.client.model.HorseModel;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.animal.horse.Horse;
+import net.minecraft.client.renderer.entity.layers.RenderLayer;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.ARGB;
 
 import javax.annotation.Nonnull;
-import com.minecolonies.api.util.constant.Constants;
-import com.minecolonies.core.entity.other.cavalry.CavalryHorseEntity;
 
-public class CavalryOverlayLayer extends RenderLayer<Horse, HorseModel<Horse>> 
+public class CavalryOverlayLayer extends RenderLayer<CavalryHorseRenderState, HorseModel>
 {
+    /**
+     * Alpha the overlay is drawn with, 0.85 of full opacity.
+     */
+    private static final int OVERLAY_ALPHA = (int) (0.85f * 255.0f);
 
-    public CavalryOverlayLayer(RenderLayerParent<Horse, HorseModel<Horse>> parent) 
+    public CavalryOverlayLayer(final RenderLayerParent<CavalryHorseRenderState, HorseModel> parent)
     {
         super(parent);
     }
@@ -26,42 +30,34 @@ public class CavalryOverlayLayer extends RenderLayer<Horse, HorseModel<Horse>>
      * Renders the cavalry horse overlay layer, which decorates the horse
      * and indicates the horse's readiness for combat.
      *
-     * @param pose    the pose stack
-     * @param buffer  the multi buffer source
-     * @param packedLight  the packed light
-     * @param horse  the horse entity
-     * @param limbSwing  the limb swing
-     * @param limbSwingAmount  the limb swing amount
-     * @param partialTicks  the partial ticks
-     * @param ageInTicks  the age in ticks
-     * @param netHeadYaw  the net head yaw
-     * @param headPitch  the head pitch
+     * @param poseStack           the pose stack
+     * @param submitNodeCollector the collector to submit the overlay to
+     * @param lightCoords         the packed light
+     * @param state               the cavalry horse render state
+     * @param yRot                the net head yaw
+     * @param xRot                the head pitch
      */
     @Override
-    public void render(@Nonnull PoseStack pose, @Nonnull MultiBufferSource buffer, int packedLight,
-                    @Nonnull Horse horse, float limbSwing, float limbSwingAmount,
-                    float partialTicks, float ageInTicks, float netHeadYaw, float headPitch)
+    public void submit(@Nonnull final PoseStack poseStack,
+      @Nonnull final SubmitNodeCollector submitNodeCollector,
+      final int lightCoords,
+      @Nonnull final CavalryHorseRenderState state,
+      final float yRot,
+      final float xRot)
     {
-        if (!(horse instanceof CavalryHorseEntity cavhorse)) return;
+        final Identifier overlayTexture = Identifier.fromNamespaceAndPath(
+          Constants.MOD_ID,
+          "textures/entity/horse/cavalry_overlay_layer" + state.combatReadinessSegments + ".png");
 
-        float threshold = horse.getMaxHealth() * CavalryHorseEntity.COMBAT_READINESS_THRESHOLD;
-        float cooldown  = Math.max(0f, cavhorse.getAnimalDataView() == null ? 0 : cavhorse.getAnimalDataView().getCombatCooldown());
-        float readiness = net.minecraft.util.Mth.clamp(1.0f - (cooldown / Math.max(0.001f, threshold)), 0f, 1f);
-
-        int segments = net.minecraft.util.Mth.clamp((int) Math.floor(readiness * 5f + 0.0001f), 0, 5);
-
-        ResourceLocation OVERLAY_TEX = new ResourceLocation(
-            Constants.MOD_ID,
-            "textures/entity/horse/cavalry_overlay_layer" + segments + ".png"
-        );
-
-        VertexConsumer vc = buffer.getBuffer(net.minecraft.client.renderer.RenderType.entityTranslucent(OVERLAY_TEX));
-
-        // 0.85f alpha -> 217 (out of 255)
-        int alpha = (int)(0.85f * 255.0f);
-        int color = net.minecraft.util.FastColor.ARGB32.color(alpha, 255, 255, 255);
-
-        this.getParentModel().renderToBuffer(pose, vc, packedLight, OverlayTexture.NO_OVERLAY, color);
+        submitNodeCollector.submitModel(this.getParentModel(),
+          state,
+          poseStack,
+          RenderTypes.entityTranslucent(overlayTexture),
+          lightCoords,
+          OverlayTexture.NO_OVERLAY,
+          ARGB.color(OVERLAY_ALPHA, 255, 255, 255),
+          null,
+          state.outlineColor,
+          null);
     }
-
 }

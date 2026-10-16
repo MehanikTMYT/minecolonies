@@ -30,7 +30,7 @@ import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
@@ -88,7 +88,7 @@ public abstract class AbstractEntityCitizen extends AbstractCivilianEntity imple
     /**
      * The default model.
      */
-    private ResourceLocation modelId = ModModelTypes.SETTLER_ID;
+    private Identifier modelId = ModModelTypes.SETTLER_ID;
 
     /**
      * The texture id.
@@ -108,7 +108,7 @@ public abstract class AbstractEntityCitizen extends AbstractCivilianEntity imple
     /**
      * The texture.
      */
-    private ResourceLocation texture;
+    private Identifier texture;
 
     /**
      * Was the texture initiated with the citizen view.
@@ -185,15 +185,6 @@ public abstract class AbstractEntityCitizen extends AbstractCivilianEntity imple
     }
 
     /**
-     * Disable vanilla steering logic for villagers
-     */
-    @Override
-    public boolean isControlledByLocalInstance()
-    {
-        return this.isEffectiveAi();
-    }
-
-    /**
      * Calculate adjusted damage.
      * This doesn't actually damage armor, for non-player entities.
      *
@@ -209,7 +200,7 @@ public abstract class AbstractEntityCitizen extends AbstractCivilianEntity imple
 
     @NotNull
     @Override
-    public InteractionResult interactAt(final Player player, final Vec3 vec, final InteractionHand hand)
+    public InteractionResult interact(final Player player, final InteractionHand hand, final Vec3 vec)
     {
         if (!player.level().isClientSide())
         {
@@ -227,7 +218,7 @@ public abstract class AbstractEntityCitizen extends AbstractCivilianEntity imple
             }
         }
 
-        return super.interactAt(player, vec, hand);
+        return super.interact(player, hand, vec);
     }
 
     /**
@@ -244,7 +235,7 @@ public abstract class AbstractEntityCitizen extends AbstractCivilianEntity imple
      */
     public void setTexture()
     {
-        if (!CompatibilityUtils.getWorldFromCitizen(this).isClientSide)
+        if (!CompatibilityUtils.getWorldFromCitizen(this).isClientSide())
         {
             return;
         }
@@ -274,7 +265,7 @@ public abstract class AbstractEntityCitizen extends AbstractCivilianEntity imple
      * @return location of the texture.
      */
     @NotNull
-    public ResourceLocation getTexture()
+    public Identifier getTexture()
     {
         if (texture == null
               || textureDirty
@@ -299,7 +290,7 @@ public abstract class AbstractEntityCitizen extends AbstractCivilianEntity imple
      *
      * @return the model.
      */
-    public ResourceLocation getModelType()
+    public Identifier getModelType()
     {
         return modelId;
     }
@@ -445,7 +436,7 @@ public abstract class AbstractEntityCitizen extends AbstractCivilianEntity imple
      *
      * @param model the model.
      */
-    public void setModelId(final ResourceLocation model)
+    public void setModelId(final Identifier model)
     {
         this.modelId = model;
     }
@@ -524,7 +515,7 @@ public abstract class AbstractEntityCitizen extends AbstractCivilianEntity imple
      */
     public int getRecentlyHit()
     {
-        return lastHurtByPlayerTime;
+        return lastHurtByPlayerMemoryTime;
     }
 
     /**
@@ -657,14 +648,14 @@ public abstract class AbstractEntityCitizen extends AbstractCivilianEntity imple
             list.add(new Pair<>(EquipmentSlot.LEGS, getItemBySlot(EquipmentSlot.LEGS)));
             list.add(new Pair<>(EquipmentSlot.OFFHAND, getItemBySlot(EquipmentSlot.OFFHAND)));
             list.add(new Pair<>(EquipmentSlot.MAINHAND, getItemBySlot(EquipmentSlot.MAINHAND)));
-            ((ServerLevel) this.level()).getChunkSource().broadcast(this, new ClientboundSetEquipmentPacket(this.getId(), list));
+            ((ServerLevel) this.level()).getChunkSource().sendToTrackingPlayers(this, new ClientboundSetEquipmentPacket(this.getId(), list));
         }
     }
 
     @Override
     public void setItemSlot(final EquipmentSlot slot, @NotNull final ItemStack newItem)
     {
-        if (!level().isClientSide)
+        if (!level().isClientSide())
         {
             final ItemStack previous = getItemBySlot(slot);
             if (!ItemStackUtils.compareItemStacksIgnoreStackSize(previous, newItem, false, true))

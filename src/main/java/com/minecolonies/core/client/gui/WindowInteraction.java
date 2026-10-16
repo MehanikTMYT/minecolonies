@@ -15,7 +15,7 @@ import com.minecolonies.core.client.gui.citizen.MainWindowCitizen;
 import com.minecolonies.core.colony.interactionhandling.QuestDialogueInteraction;
 import com.minecolonies.core.network.messages.server.colony.InteractionClose;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
 
@@ -56,7 +56,7 @@ public class WindowInteraction extends AbstractWindowSkeleton
      */
     public WindowInteraction(final ICitizenDataView citizen)
     {
-        super(new MainWindowCitizen(citizen), new ResourceLocation(Constants.MOD_ID, "gui/citizen/windowinteraction.xml"));
+        super(new MainWindowCitizen(citizen), Identifier.fromNamespaceAndPath(Constants.MOD_ID, "gui/citizen/windowinteraction.xml"));
         this.citizen = citizen;
         this.interactions = new ArrayList<>(citizen.getOrderedInteractions());
         registerButton(BUTTON_CANCEL, this::cancelClicked);
@@ -102,7 +102,7 @@ public class WindowInteraction extends AbstractWindowSkeleton
         handler.onOpened(Minecraft.getInstance().player);
         final Box group = findPaneOfTypeByID(RESPONSE_BOX_ID, Box.class);
         group.getChildren().clear();
-        int y = 0;
+        int y = BUTTON_HEIGHT;
         int x = 0;
         final Text chatText = findPaneOfTypeByID(CHAT_LABEL_ID, Text.class);
         chatText.setTextAlignment(Alignment.TOP_LEFT);
@@ -112,13 +112,13 @@ public class WindowInteraction extends AbstractWindowSkeleton
         for (final Component component : handler.getPossibleResponses())
         {
             final ButtonImage button = new ButtonImage();
-            button.setImage(new ResourceLocation(Constants.MOD_ID, MEDIUM_SIZED_BUTTON_RES));
+            button.setImage(Identifier.fromNamespaceAndPath(Constants.MOD_ID, MEDIUM_SIZED_BUTTON_RES));
 
             final int textLen = mc.font.width(component.getString());
             int buttonHeight = BUTTON_HEIGHT;
             if (textLen > BUTTON_LENGTH - 4)
             {
-                buttonHeight = 2 * BUTTON_HEIGHT;
+                buttonHeight = (int) (1.5 * BUTTON_HEIGHT);
             }
 
             button.setSize(BUTTON_LENGTH, buttonHeight);
@@ -137,7 +137,7 @@ public class WindowInteraction extends AbstractWindowSkeleton
             if (x + button.getWidth() >= group.getWidth())
             {
                 x = 0;
-                y += BUTTON_Y_BUFFER + 2 * BUTTON_HEIGHT;
+                y += BUTTON_Y_BUFFER + BUTTON_HEIGHT;
             }
             responseIndex++;
         }

@@ -1,5 +1,8 @@
 package com.minecolonies.core.entity.other.cavalry;
 
+import com.minecolonies.api.util.ValueIOUtils;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
 import java.util.UUID;
 import javax.annotation.Nonnull;
 
@@ -14,11 +17,13 @@ import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.colony.managers.interfaces.IAnimalDataView;
 import com.minecolonies.api.colony.managers.interfaces.IManagedAnimal;
 import com.minecolonies.api.entity.ModEntities;
+import com.minecolonies.api.research.util.ResearchConstants;
 import com.minecolonies.api.util.CompatibilityUtils;
 import com.minecolonies.api.util.DamageSourceKeys;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.LookHandler;
 import com.minecolonies.api.util.constant.CitizenConstants;
+import com.minecolonies.api.util.constant.GuardConstants;
 import com.minecolonies.api.util.constant.NbtTagConstants;
 import com.minecolonies.core.MineColonies;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingStable;
@@ -28,33 +33,42 @@ import com.minecolonies.core.entity.ai.cavalry.ReturnToStableGoal;
 import com.minecolonies.core.entity.citizen.EntityCitizen;
 import com.minecolonies.core.entity.mobs.AnimalColonyHandler;
 import com.minecolonies.core.entity.mobs.IAnimalColonyHandler;
+import com.minecolonies.core.entity.other.ICitizenJobMount;
 import com.minecolonies.core.entity.pathfinding.PathPointExtended;
+import com.minecolonies.core.entity.pathfinding.PathingOptions;
 import com.minecolonies.core.entity.pathfinding.navigation.MinecoloniesAdvancedPathNavigate;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.ConversionParams;
 import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.EntityReference;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.entity.animal.horse.AbstractHorse;
-import net.minecraft.world.entity.animal.horse.Donkey;
-import net.minecraft.world.entity.animal.horse.Horse;
-import net.minecraft.world.entity.animal.horse.Mule;
-import net.minecraft.world.entity.animal.horse.Variant;
+import net.minecraft.world.entity.animal.equine.AbstractHorse;
+import net.minecraft.world.entity.animal.equine.Donkey;
+import net.minecraft.world.entity.animal.equine.Horse;
+import net.minecraft.world.entity.animal.equine.Mule;
+import net.minecraft.world.entity.animal.equine.Variant;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.LadderBlock;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.BreedGoal;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
@@ -67,11 +81,14 @@ import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.level.pathfinder.Node;
+
+import static com.minecolonies.api.util.constant.GuardConstants.CAVALRY_RANGED_DAMAGE_VULNERABILITY;
+
 /**
  * Cavalry Horse Entity class for Minecolonies.
  * Extends the vanilla Horse entity with custom behavior for cavalry units.
  */
-public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryHorseEntity>
+public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryHorseEntity>, ICitizenJobMount
 {
     public static final EntityDataAccessor<Integer>  DATA_COLONY_ID         = SynchedEntityData.defineId(CavalryHorseEntity.class, EntityDataSerializers.INT);
     public static final EntityDataAccessor<Integer>  DATA_MANAGED_ANIMAL_ID = SynchedEntityData.defineId(CavalryHorseEntity.class, EntityDataSerializers.INT);
@@ -96,6 +113,12 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
     private int logCooldown = 0;
 
     public static final float COMBAT_READINESS_THRESHOLD = .66f;
+
+    /**
+     * Attribute modifier used to apply the colony's mount health research to this horse.
+     */
+    private static final Identifier MOUNT_HEALTH_RESEARCH_MODIFIER =
+        Identifier.fromNamespaceAndPath("minecolonies", "mount_health_research");
 
     /**
      * The animal colony handler.
@@ -154,6 +177,20 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
         this.animalColonyHandler = new AnimalColonyHandler(this);
     }
 
+    @Override
+    public void configureMountedPathing(final PathingOptions options)
+    {
+        options.setEnterGates(true);
+        options.setEnterDoors(false);
+        options.setTurnPenalty(GuardConstants.CAVALRY_CORNER_PENALTY);
+    }
+
+    @Override
+    public boolean hadHorizontalCollision()
+    {
+        return hadHorizontalCollission();
+    }
+
     /**
      * Registers the goals for this entity.
      * <p>
@@ -205,7 +242,7 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
         int colonyId = getColonyId();
 
         // if the entity is summoned into the world with an ops command rather than created by the stablemaster, this "autoregisters" the entity as a managed animal to the closest colony.
-        if (colonyId == 0 && !CompatibilityUtils.getWorldFromEntity(this).isClientSide)
+        if (colonyId == 0 && !CompatibilityUtils.getWorldFromEntity(this).isClientSide())
         {
             IColony colony = IColonyManager.getInstance().getClosestColony(level(), this.blockPosition());
 
@@ -223,7 +260,7 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
             setColonyId(colonyId);
         }
 
-        if (CompatibilityUtils.getWorldFromEntity(this).isClientSide)
+        if (CompatibilityUtils.getWorldFromEntity(this).isClientSide())
         {
             animalColonyHandler.updateColonyClient();
 
@@ -364,7 +401,7 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
     protected void addPassenger(@Nonnull Entity passenger)
     {
         super.addPassenger(passenger);
-        dropLeash(true, false);
+        removeLeash();
         lastDismountTime = -1;
     }
 
@@ -391,18 +428,6 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
     public void setLeashedTo(@Nonnull Entity entity, boolean sendPacket)
     {
         super.setLeashedTo(entity, sendPacket);
-    }
-
-    /**
-     * Drops the leash for this horse, optionally sending a packet to clients and dropping the lead item.
-     * 
-     * @param broadcastPacket whether to send a packet to clients
-     * @param dropLeadItem whether to drop the lead item
-     */
-    @Override
-    public void dropLeash(boolean broadcastPacket, boolean dropLeadItem)
-    {
-        super.dropLeash(broadcastPacket, dropLeadItem);
     }
 
     /**
@@ -488,7 +513,7 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
     {
         super.tick();
 
-        if (level().isClientSide) return;
+        if (level().isClientSide()) return;
 
         if (hasReservation())
         {
@@ -635,7 +660,7 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
      */
     public static CavalryHorseEntity createFromVanilla(IColony colony, Level level, AbstractHorse vanilla)
     {
-        if (level.isClientSide) return null;
+        if (level.isClientSide()) return null;
 
         // If already a CavalryHorseEntity, return it
         if (vanilla instanceof CavalryHorseEntity) return (CavalryHorseEntity) vanilla;
@@ -645,7 +670,7 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
 
         // --- Snapshot generic AbstractHorse state ---
         final boolean wasTamed = vanilla.isTamed();
-        final UUID owner = vanilla.getOwnerUUID();
+        final EntityReference<LivingEntity> owner = vanilla.getOwnerReference();
         final int temper = vanilla.getTemper();
         final double health = vanilla.getHealth();
         final String customName = vanilla.hasCustomName() ? vanilla.getName().getString() : null;
@@ -654,8 +679,10 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
         AttributeInstance speedAttr = vanilla.getAttribute(Attributes.MOVEMENT_SPEED);
         AttributeInstance jumpAttr = vanilla.getAttribute(Attributes.JUMP_STRENGTH);
 
-        // TODO: Create research that improves the capability of CavalryHorses
-        double maxHealth = healthAttr != null ? healthAttr.getBaseValue() * 1.25 : 30.0D;
+        final double maxHealth = healthAttr != null
+            ? healthAttr.getBaseValue() * 1.25D
+            : 30.0D;
+
         double moveSpeed = speedAttr != null ? speedAttr.getBaseValue() * 1.25 : 0.25D;
         double jumpStrength = jumpAttr != null ? 0.7D : 0.7D;
 
@@ -670,12 +697,11 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
         Entity leashHolder = vanilla.getLeashHolder();
 
         // Convert to CavalryHorseEntity
-        CavalryHorseEntity cav = vanilla.convertTo(ModEntities.CAVALRY_HORSE, true);
+        CavalryHorseEntity cav = vanilla.convertTo(
+          ModEntities.CAVALRY_HORSE,
+          ConversionParams.single(vanilla, true, true),
+          converted -> { });
         if (cav == null) return null;
-
-        IAnimalData animalData = colony.getAnimalManager().createAndRegisterAnimalData(cav);
-        cav.setAnimalData(animalData);
-        cav.setColonyId(colony.getID());
 
         // Re-apply attributes & health
         AttributeInstance cavHealthAttr = cav.getAttribute(Attributes.MAX_HEALTH);
@@ -706,14 +732,17 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
 
         // Re-apply AbstractHorse state
         cav.setTamed(wasTamed);
-        cav.setOwnerUUID(owner);
+        if (owner != null)
+        {
+            cav.setOwner(owner.getEntity(level, LivingEntity.class));
+        }
         cav.setTemper(temper);
         cav.setPersistenceRequired();
 
         // Re-apply Horse-specific visuals
         if (variant != null)
         {
-            cav.setVariant(variant);
+            cav.setComponent(DataComponents.HORSE_VARIANT, variant);
         }
 
         // Name & leash
@@ -727,7 +756,83 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
             cav.setLeashedTo(leashHolder, true);
         }
 
+        IAnimalData animalData = colony.getAnimalManager().createAndRegisterAnimalData(cav);
+        cav.setAnimalData(animalData);
+        cav.setColonyId(colony.getID());
+
+        // Newly trained mounts start in an unready state, and must be readied.
+        animalData.setCombatCooldown((float)maxHealth);
+        animalData.markDirty();
+
         return cav;
+    }
+
+    /**
+     * Checks whether this horse's mount health modifier differs from its colony's current research bonus.
+     *
+     * @return true when the Stablemaster needs to apply or update the mount health training
+     */
+    public boolean needsHealthTraining()
+    {
+        final IColony colony = animalColonyHandler.getColony();
+        final AttributeInstance healthAttribute = getAttribute(Attributes.MAX_HEALTH);
+
+        if (colony == null || healthAttribute == null)
+        {
+            return false;
+        }
+
+        final double expectedBonus = colony.getResearchManager()
+            .getResearchEffects()
+            .getEffectStrength(ResearchConstants.MOUNT_HEALTH);
+
+        for (final AttributeModifier modifier : healthAttribute.getModifiers())
+        {
+            if (MOUNT_HEALTH_RESEARCH_MODIFIER.equals(modifier.id()))
+            {
+                return Double.compare(modifier.amount(), expectedBonus) != 0;
+            }
+        }
+
+        return expectedBonus > 0.0D;
+    }
+
+    /**
+     * Replaces this horse's mount health modifier with the bonus granted by its colony's current research.
+     * The horse retains its current health so that any newly gained capacity is restored through normal feeding.
+     *
+     * @return true when the modifier was changed, false when no update could be applied or was necessary
+     */
+    public boolean applyHealthTraining()
+    {
+        final IColony colony = animalColonyHandler.getColony();
+        final AttributeInstance healthAttribute = getAttribute(Attributes.MAX_HEALTH);
+
+        if (colony == null || healthAttribute == null || !needsHealthTraining())
+        {
+            return false;
+        }
+
+        final double expectedBonus = colony.getResearchManager()
+            .getResearchEffects()
+            .getEffectStrength(ResearchConstants.MOUNT_HEALTH);
+
+        healthAttribute.removeModifier(MOUNT_HEALTH_RESEARCH_MODIFIER);
+
+        if (expectedBonus > 0.0D)
+        {
+            healthAttribute.addPermanentModifier(new AttributeModifier(
+                MOUNT_HEALTH_RESEARCH_MODIFIER,
+                expectedBonus,
+                AttributeModifier.Operation.ADD_MULTIPLIED_BASE));
+        }
+
+        if (getHealth() > getMaxHealth())
+        {
+            setHealth(getMaxHealth());
+        }
+
+        return true;
     }
 
     /**
@@ -749,20 +854,14 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
      * @return true if the damage was applied, false otherwise
      */
     @Override
-    public boolean hurt(@Nonnull DamageSource damageSource, float damageAmount)
+    public boolean hurtServer(@Nonnull final ServerLevel level, @Nonnull DamageSource damageSource, float damageAmount)
     {
        
-        if (level().isClientSide)
-        {
-            return true;
-        }
-
         // Percentage of damage applied to combat cooldown
         float cooldownImpact = .40f;
 
         if (damageSource.is(DamageTypeTags.IS_EXPLOSION) && damageSource.getEntity() instanceof Creeper) 
         {
-            // TODO: Introduce research to improve explosion damage mitigation.
             damageAmount *= 0.30f;
         }
 
@@ -771,13 +870,28 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
             damageAmount *= 0.0f;
         }
 
-        // TODO: Create research that provides combat cooldown mitigation
-        float combatCooldown = animalData.getCombatCooldown() + (damageAmount * cooldownImpact);
+        if (damageSource.is(DamageTypeTags.IS_PROJECTILE))
+        {
+            // Horses take more damage from ranged attacks
+            damageAmount *= CAVALRY_RANGED_DAMAGE_VULNERABILITY;
+        }
 
-        animalData.setCombatCooldown(combatCooldown);
-        animalData.markDirty();
+        final float mountArmorBonus = (float) animalColonyHandler.getColony().getResearchManager()
+            .getResearchEffects()
+            .getEffectStrength(ResearchConstants.MOUNT_ARMOR);
 
-        return super.hurt(damageSource, damageAmount);
+        if (mountArmorBonus > 0.0f)
+        {
+            damageAmount = damageAmount * (1.0f - mountArmorBonus);
+        }
+
+        if (animalData != null)
+        {
+            animalData.setCombatCooldown(animalData.getCombatCooldown() + (damageAmount * cooldownImpact));
+            animalData.markDirty();
+        }
+        
+        return super.hurtServer(level, damageSource, damageAmount);
     }
 
     /**
@@ -786,9 +900,19 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
      * stableDim: The dimension of the stable block, or null if not set.
      */
     @Override
-    public void addAdditionalSaveData(@Nonnull CompoundTag tag)
+    protected void addAdditionalSaveData(@NotNull final ValueOutput output)
     {
-        super.addAdditionalSaveData(tag);
+        super.addAdditionalSaveData(output);
+        final CompoundTag saveTag = new CompoundTag();
+        addAdditionalSaveDataTag(saveTag);
+        ValueIOUtils.writeAsTag(output, saveTag);
+    }
+
+    /**
+     * Writes the entity save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void addAdditionalSaveDataTag(final CompoundTag tag)
+    {
 
         tag.putInt(NbtTagConstants.TAG_COLONY_ID, animalColonyHandler.getColonyId());
         if (animalData != null)
@@ -810,18 +934,26 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
      * Other persisted data is managed through the associated IAnimalData.
      */
     @Override
-    public void readAdditionalSaveData(@Nonnull CompoundTag tag)
+    protected void readAdditionalSaveData(@NotNull final ValueInput input)
     {
-        super.readAdditionalSaveData(tag);
+        super.readAdditionalSaveData(input);
+        readAdditionalSaveDataTag(ValueIOUtils.readAsTag(input));
+    }
+
+    /**
+     * Reads the entity save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void readAdditionalSaveDataTag(final CompoundTag tag)
+    {
 
         if (tag.contains(NbtTagConstants.TAG_COLONY_ID))
         {
-            int colonyId = tag.getInt(NbtTagConstants.TAG_COLONY_ID);
+            int colonyId = tag.getIntOr(NbtTagConstants.TAG_COLONY_ID, 0);
             setColonyId(colonyId);
 
             if (tag.contains(NbtTagConstants.TAG_MANAGED_ANIMALID))
             {
-                setManagedAnimalId(tag.getInt(NbtTagConstants.TAG_MANAGED_ANIMALID));
+                setManagedAnimalId(tag.getIntOr(NbtTagConstants.TAG_MANAGED_ANIMALID, 0));
             }
             else
             {

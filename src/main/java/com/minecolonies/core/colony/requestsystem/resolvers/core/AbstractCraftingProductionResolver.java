@@ -1,5 +1,6 @@
 package com.minecolonies.core.colony.requestsystem.resolvers.core;
 
+import net.minecraft.world.item.ItemStackTemplate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.reflect.TypeToken;
 import com.minecolonies.api.colony.buildings.modules.ICraftingBuildingModule;
@@ -69,7 +70,7 @@ public abstract class AbstractCraftingProductionResolver<C extends AbstractCraft
     @Override
     public Optional<IRequester> getBuilding(@NotNull final IRequestManager manager, @NotNull final IToken<?> token)
     {
-        if (!manager.getColony().getWorld().isClientSide)
+        if (!manager.getColony().getWorld().isClientSide())
         {
             return Optional.ofNullable(manager.getColony().getRequesterBuildingForPosition(getLocation().getInDimensionLocation()));
         }
@@ -80,7 +81,7 @@ public abstract class AbstractCraftingProductionResolver<C extends AbstractCraft
     @Override
     public boolean canResolveRequest(@NotNull final IRequestManager manager, final IRequest<? extends C> requestToCheck)
     {
-        if (!manager.getColony().getWorld().isClientSide)
+        if (!manager.getColony().getWorld().isClientSide())
         {
             final ILocation requesterLocation = requestToCheck.getRequester().getLocation();
             return requesterLocation.equals(getLocation());
@@ -164,7 +165,8 @@ public abstract class AbstractCraftingProductionResolver<C extends AbstractCraft
             if (!ItemStackUtils.isEmpty(ingredient.getItemStack()))
             {
                 final ItemStack craftingHelperStack = ingredient.getItemStack().copy();
-                final ItemStack container = ingredient.getItemStack().getCraftingRemainingItem();
+                final ItemStackTemplate remainderTemplate = ingredient.getItemStack().getCraftingRemainder();
+            final ItemStack container = remainderTemplate == null ? ItemStack.EMPTY : remainderTemplate.create();
                 //if recipe secondary produces craftinghelperstack, don't add it by count, add it once. If it's in the tools list, check to see if we need it first. 
                 if(!storage.getSecondaryOutputs().isEmpty() && ItemStackUtils.compareItemStackListIgnoreStackSize(storage.getSecondaryOutputs(), craftingHelperStack, false, true))
                 {

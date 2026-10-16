@@ -8,34 +8,34 @@ import com.minecolonies.core.blocks.BlockScarecrow;
 import com.minecolonies.core.client.model.ScarecrowModel;
 import com.minecolonies.core.event.ClientRegistryHandler;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.block.BlockModelResolver;
+import net.minecraft.client.renderer.block.model.BlockDisplayContext;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.client.resources.model.Material;
-import net.minecraft.core.BlockPos;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.resources.model.sprite.SpriteGetter;
+import net.minecraft.client.resources.model.sprite.SpriteId;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.inventory.InventoryMenu;
-import net.minecraft.world.level.Level;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Class to render the scarecrow.
  */
-@OnlyIn(Dist.CLIENT)
-public class TileEntityScarecrowRenderer implements BlockEntityRenderer<AbstractTileEntityScarecrow>
+public class TileEntityScarecrowRenderer implements BlockEntityRenderer<AbstractTileEntityScarecrow, ScarecrowRenderState>
 {
+    private static final BlockDisplayContext BLOCK_DISPLAY_CONTEXT = BlockDisplayContext.create();
     /**
      * Offset to the block middle.
      */
@@ -75,15 +75,16 @@ public class TileEntityScarecrowRenderer implements BlockEntityRenderer<Abstract
      * The model of the scarecrow.
      */
     @NotNull
-    private ScarecrowModel model;
+    private final ScarecrowModel model;
 
-    public static final Material SCARECROW_A;
-    public static final Material       SCARECROW_B;
-    static
-    {
-        SCARECROW_A = new Material(InventoryMenu.BLOCK_ATLAS, new ResourceLocation(Constants.MOD_ID, "block/blockscarecrowpumpkin"));
-        SCARECROW_B = new Material(InventoryMenu.BLOCK_ATLAS, new ResourceLocation(Constants.MOD_ID, "block/blockscarecrownormal"));
-    }
+    private final SpriteGetter sprites;
+
+    private final BlockModelResolver blockModelResolver;
+
+    public static final SpriteId SCARECROW_A = new SpriteId(
+      TextureAtlas.LOCATION_BLOCKS, Identifier.fromNamespaceAndPath(Constants.MOD_ID, "block/blockscarecrowpumpkin"));
+    public static final SpriteId SCARECROW_B = new SpriteId(
+      TextureAtlas.LOCATION_BLOCKS, Identifier.fromNamespaceAndPath(Constants.MOD_ID, "block/blockscarecrownormal"));
     /**
      * The public constructor for the renderer.
      *
@@ -93,59 +94,97 @@ public class TileEntityScarecrowRenderer implements BlockEntityRenderer<Abstract
     {
         super();
         this.model = new ScarecrowModel(context.bakeLayer(ClientRegistryHandler.SCARECROW));
+        this.sprites = context.sprites();
+        this.blockModelResolver = context.blockModelResolver();
     }
 
     @Override
-    public void render(
-      final AbstractTileEntityScarecrow te,
-      final float partialTicks,
-      final PoseStack matrixStack,
-      @NotNull final MultiBufferSource iRenderTypeBuffer,
-      final int lightA,
-      final int lightB)
+    public ScarecrowRenderState createRenderState()
     {
-        if (te.getBlockState().getValue(BlockScarecrow.HALF) == DoubleBlockHalf.UPPER)
+        return new ScarecrowRenderState();
+    }
+
+    @Override
+    public void extractRenderState(
+      final AbstractTileEntityScarecrow tileEntity,
+      final ScarecrowRenderState state,
+      final float partialTicks,
+      final Vec3 cameraPosition,
+      final ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress)
+    {
+        BlockEntityRenderer.super.extractRenderState(tileEntity, state, partialTicks, cameraPosition, breakProgress);
+        state.render = tileEntity.getBlockState().getValue(BlockScarecrow.HALF) != DoubleBlockHalf.UPPER;
+        state.pumpkinHead = tileEntity.getScarecrowType() == ScareCrowType.PUMPKINHEAD;
+        state.facing = tileEntity.getBlockState().getBlock() instanceof BlockScarecrow
+                         ? tileEntity.getBlockState().getValue(AbstractBlockMinecoloniesDefault.FACING)
+                         : Direction.NORTH;
+
+        if (state.render && tileEntity.getBlockState().getValue(BlockScarecrow.LANTERN))
+        {
+            this.blockModelResolver.update(state.lantern, Blocks.LANTERN.defaultBlockState(), BLOCK_DISPLAY_CONTEXT);
+            if (tileEntity.getLevel() != null)
+            {
+                final int blockLight = tileEntity.getLevel().getBrightness(LightLayer.BLOCK, tileEntity.getBlockPos());
+                final int skyLight = tileEntity.getLevel().getBrightness(LightLayer.SKY, tileEntity.getBlockPos());
+                state.lightCoords = LightCoordsUtil.pack(blockLight, skyLight);
+            }
+        }
+        else
+        {
+            state.lantern.clear();
+        }
+    }
+
+    @Override
+    public void submit(
+      final ScarecrowRenderState state,
+      final PoseStack matrixStack,
+      final SubmitNodeCollector submitNodeCollector,
+      final CameraRenderState camera)
+    {
+        if (!state.render)
         {
             return;
         }
+
         //Store the transformation
         matrixStack.pushPose();
         //Set viewport to tile entity position to render it
         matrixStack.translate(BLOCK_MIDDLE, YOFFSET, BLOCK_MIDDLE);
         matrixStack.mulPose(Axis.ZP.rotationDegrees(ROTATION));
 
-        //In the case of worldLags tileEntities may sometimes disappear.
-        if (te.getLevel().getBlockState(te.getBlockPos()).getBlock() instanceof BlockScarecrow)
+        switch (state.facing)
         {
-            final Direction facing = te.getLevel().getBlockState(te.getBlockPos()).getValue(AbstractBlockMinecoloniesDefault.FACING);
-            switch (facing)
-            {
-                case EAST:
-                    matrixStack.mulPose(Axis.YP.rotationDegrees(BASIC_ROTATION * ROTATE_EAST));
-                    break;
-                case SOUTH:
-                    matrixStack.mulPose(Axis.YP.rotationDegrees(BASIC_ROTATION * ROTATE_SOUTH));
-                    break;
-                case WEST:
-                    matrixStack.mulPose(Axis.YP.rotationDegrees(BASIC_ROTATION * ROTATE_WEST));
-                    break;
-                default:
-                    //don't rotate at all.
-            }
+            case EAST -> matrixStack.mulPose(Axis.YP.rotationDegrees(BASIC_ROTATION * ROTATE_EAST));
+            case SOUTH -> matrixStack.mulPose(Axis.YP.rotationDegrees(BASIC_ROTATION * ROTATE_SOUTH));
+            case WEST -> matrixStack.mulPose(Axis.YP.rotationDegrees(BASIC_ROTATION * ROTATE_WEST));
+            default -> { /* Don't rotate at all. */ }
         }
 
-        final VertexConsumer vertexConsumer = getMaterial(te).buffer(iRenderTypeBuffer, RenderType::entitySolid);
-        this.model.renderToBuffer(matrixStack, vertexConsumer, lightA, lightB, -1);
+        submitNodeCollector.submitModel(
+          this.model,
+          net.minecraft.util.Unit.INSTANCE,
+          matrixStack,
+          state.lightCoords,
+          OverlayTexture.NO_OVERLAY,
+          -1,
+          getSprite(state),
+          this.sprites,
+          0,
+          state.breakProgress);
 
-        if (te.getBlockState().getValue(BlockScarecrow.LANTERN))
+        if (!state.lantern.isEmpty())
         {
-            renderLantern(matrixStack, iRenderTypeBuffer, te.getBlockPos(), te.getLevel());
+            submitLantern(matrixStack, submitNodeCollector, state);
         }
 
         matrixStack.popPose();
     }
 
-    private static void renderLantern(final PoseStack matrixStack, final MultiBufferSource buffer, final BlockPos pos, final Level level)
+    private static void submitLantern(
+      final PoseStack matrixStack,
+      final SubmitNodeCollector submitNodeCollector,
+      final ScarecrowRenderState state)
     {
         matrixStack.pushPose();
 
@@ -154,17 +193,7 @@ public class TileEntityScarecrowRenderer implements BlockEntityRenderer<Abstract
 
         matrixStack.scale(0.75f, 0.65f, 0.75f);
 
-        final int blockLight = level.getBrightness(LightLayer.BLOCK, pos);
-        final int skyLight = level.getBrightness(LightLayer.SKY, pos);
-
-        Minecraft.getInstance()
-            .getBlockRenderer()
-            .renderSingleBlock(
-                Blocks.LANTERN.defaultBlockState(),
-                matrixStack,
-                buffer,
-                LightTexture.pack(blockLight, skyLight),
-                OverlayTexture.NO_OVERLAY);
+        state.lantern.submit(matrixStack, submitNodeCollector, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
 
         matrixStack.popPose();
     }
@@ -176,15 +205,8 @@ public class TileEntityScarecrowRenderer implements BlockEntityRenderer<Abstract
      * @return the material.
      */
     @NotNull
-    private static Material getMaterial(@NotNull final AbstractTileEntityScarecrow tileEntity)
+    private static SpriteId getSprite(@NotNull final ScarecrowRenderState state)
     {
-        if (tileEntity.getScarecrowType() == ScareCrowType.PUMPKINHEAD)
-        {
-            return SCARECROW_A;
-        }
-        else
-        {
-            return SCARECROW_B;
-        }
+        return state.pumpkinHead ? SCARECROW_A : SCARECROW_B;
     }
 }

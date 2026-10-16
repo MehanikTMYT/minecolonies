@@ -1,5 +1,6 @@
 package com.minecolonies.core.entity.ai.workers.crafting;
 
+import net.minecraft.world.item.ItemStackTemplate;
 import com.google.common.collect.ImmutableList;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.colony.buildings.modules.ICraftingBuildingModule;
@@ -375,7 +376,8 @@ public abstract class AbstractEntityAICrafting<J extends AbstractJobCrafter<?, J
         final List<ItemStorage> input = currentRecipeStorage.getCleanedInput();
         for (final ItemStorage inputStorage : input)
         {
-            final ItemStack container = inputStorage.getItemStack().getCraftingRemainingItem();
+            final ItemStackTemplate remainderTemplate = inputStorage.getItemStack().getCraftingRemainder();
+            final ItemStack container = remainderTemplate == null ? ItemStack.EMPTY : remainderTemplate.create();
             boolean isToolOrContainer = true;
             final int remaining;
             if (!currentRecipeStorage.getCraftingToolsAndSecondaryOutputs().isEmpty()
@@ -468,7 +470,8 @@ public abstract class AbstractEntityAICrafting<J extends AbstractJobCrafter<?, J
         {
             final Predicate<ItemStack> predicate = stack -> !ItemStackUtils.isEmpty(stack) && new Stack(stack, false).matches(inputStorage.getItemStack());
             final int invCount = InventoryUtils.getItemCountInItemHandler(worker.getInventoryCitizen(), predicate) + getExtendedCount(inputStorage.getItemStack());
-            final ItemStack container = inputStorage.getItemStack().getCraftingRemainingItem();
+            final ItemStackTemplate remainderTemplate = inputStorage.getItemStack().getCraftingRemainder();
+            final ItemStack container = remainderTemplate == null ? ItemStack.EMPTY : remainderTemplate.create();
             final int remaining;
             if (!currentRecipeStorage.getCraftingToolsAndSecondaryOutputs().isEmpty()
                   && ItemStackUtils.compareItemStackListIgnoreStackSize(currentRecipeStorage.getCraftingToolsAndSecondaryOutputs(), inputStorage.getItemStack(), false, true))
@@ -699,10 +702,16 @@ public abstract class AbstractEntityAICrafting<J extends AbstractJobCrafter<?, J
                 final IBuilding warehouse = job.getColony().getServerBuildingManager().getBuilding(closestWarehouse);
                 for (final Map.Entry<ItemStorage, Integer> output : job.getSecondaryOutputs().entrySet())
                 {
-                    warehouse.createRequest(new Delivery(building.getLocation(),
-                        warehouse.getLocation(),
-                        output.getKey().getItemStack().copyWithCount(output.getValue()),
-                        MAX_BUILDING_PRIORITY), true);
+                    int value = output.getValue();
+                    while (value > 0)
+                    {
+                        final int deliveryValue = Math.min(output.getKey().getItemStack().getMaxStackSize(), value);
+                        warehouse.createRequest(new Delivery(building.getLocation(),
+                            warehouse.getLocation(),
+                            output.getKey().getItemStack().copyWithCount(deliveryValue),
+                            MAX_BUILDING_PRIORITY), true);
+                        value -= deliveryValue;
+                    }
                 }
             }
             job.getSecondaryOutputs().clear();

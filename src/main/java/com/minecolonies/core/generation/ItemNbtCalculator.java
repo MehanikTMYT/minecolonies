@@ -9,6 +9,7 @@ import com.ldtteam.domumornamentum.client.model.data.MaterialTextureData;
 import com.ldtteam.domumornamentum.client.model.data.MaterialTextureData.Builder;
 import com.minecolonies.api.items.component.ModDataComponents;
 import com.minecolonies.api.util.CraftingUtils;
+import com.minecolonies.api.util.ItemStackUtils;
 import com.mojang.serialization.DynamicOps;
 import it.unimi.dsi.fastutil.objects.ReferenceArraySet;
 import net.minecraft.core.Holder;
@@ -24,7 +25,7 @@ import net.minecraft.data.PackOutput;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
@@ -34,7 +35,6 @@ import net.minecraft.server.packs.resources.MultiPackResourceManager;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.tags.TagKey;
 import net.minecraft.tags.TagLoader;
-import net.minecraft.tags.TagManager;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.item.*;
 import net.neoforged.fml.ModList;
@@ -79,7 +79,6 @@ public class ItemNbtCalculator implements DataProvider
         // Force loading some tags, since the creative tabs don't enumerate properly without them
         return lookupProvider
             // Tag TagKey[minecraft:instrument / minecraft:goat_horns] can't be dereferenced during construction
-            .thenApply(p -> loadRegistryTags(p, serverResources, BuiltInRegistries.INSTRUMENT))
             // Missing tag: 'minecraft:enchantable/fishing' in 'minecraft:item'
             .thenApply(p -> loadRegistryTags(p, serverResources, BuiltInRegistries.ITEM))
             // Missing tag: 'minecraft:blocks_wind_charge_explosions' in 'minecraft:block'
@@ -132,10 +131,10 @@ public class ItemNbtCalculator implements DataProvider
 
             for (final ItemStack stack : allStacks)
             {
-                final ResourceLocation resourceLocation = stack.getItemHolder().unwrapKey().get().location();
+                final Identifier resourceLocation = stack.getItem().builtInRegistryHolder().unwrapKey().orElseThrow().identifier();
                 final Set<DataComponentType<?>> keys = new ReferenceArraySet<>(stack.getComponents().keySet());
 
-                if (stack.getItem() instanceof ArmorItem)
+                if (ItemStackUtils.isArmor(stack))
                 {
                     keys.add(DataComponents.DYED_COLOR);
                 }
@@ -147,7 +146,7 @@ public class ItemNbtCalculator implements DataProvider
                 {
                     keys.remove(DataComponents.ENCHANTMENTS);
                 }
-                if (!stack.isRepairable())
+                if (!stack.has(DataComponents.REPAIRABLE))
                 {
                     keys.remove(DataComponents.REPAIR_COST);
                 }
@@ -173,7 +172,7 @@ public class ItemNbtCalculator implements DataProvider
                 });
             }
 
-            final Path path = packOutput.createPathProvider(PackOutput.Target.DATA_PACK, "compatibility").file(new ResourceLocation(MOD_ID, "itemnbtmatching"), "json");
+            final Path path = packOutput.createPathProvider(PackOutput.Target.DATA_PACK, "compatibility").file(Identifier.fromNamespaceAndPath(MOD_ID, "itemnbtmatching"), "json");
             final JsonArray jsonArray = new JsonArray();
             for (final Map.Entry<String, Set<String>> entry : keyMapping.entrySet())
             {
@@ -213,32 +212,26 @@ public class ItemNbtCalculator implements DataProvider
     {
         final ResourceKey<? extends Registry<T>> registryId = registry.key();
 
-        // from TagManager.createLoader
-        final TagLoader<Holder<T>> tagLoader = new TagLoader<>(registry::getHolder, Registries.tagsDirPath(registryId));
-        final TagManager.LoadResult<T> loadResult = new TagManager.LoadResult<>(registryId, tagLoader.loadAndBuild(resources));
-
-        final Map<TagKey<T>, List<Holder<T>>> map = loadResult.tags()
-                .entrySet()
-                .stream()
-                .collect(Collectors.toUnmodifiableMap(entry -> TagKey.create(registryId, entry.getKey()), values -> List.copyOf(values.getValue())));
-        registry.bindTags(map);
+        final Map<TagKey<T>, List<Holder<T>>> tags =
+          TagLoader.loadTagsForRegistry(resources, registryId, (id, required) -> registry.get(id));
+        registry.prepareTagReload(new TagLoader.LoadResult<>(registryId, tags)).apply();
 
         return new HolderLookup.Provider()
         {
             @NotNull
             @Override
-            public Stream<ResourceKey<? extends Registry<?>>> listRegistries()
+            public Stream<ResourceKey<? extends Registry<?>>> listRegistryKeys()
             {
-                return provider.listRegistries();
+                return provider.listRegistryKeys();
             }
 
             @NotNull
             @Override
-            public <U> Optional<HolderLookup.RegistryLookup<U>> lookup(@NotNull final ResourceKey<? extends Registry<? extends U>> id)
+            public <U> Optional<? extends HolderLookup.RegistryLookup<U>> lookup(@NotNull final ResourceKey<? extends Registry<? extends U>> id)
             {
                 if (id.equals(registryId))
                 {
-                    return Optional.of((HolderLookup.RegistryLookup<U>) registry.asLookup());
+                    return Optional.of((HolderLookup.RegistryLookup<U>) registry);
                 }
 
                 return provider.lookup(id);

@@ -13,7 +13,6 @@ import com.minecolonies.api.util.constant.SerializationIdentifierConstants;
 import com.minecolonies.api.util.constant.TypeConstants;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.util.Tuple;
 
@@ -113,12 +112,12 @@ public class StandardProviderRequestResolverAssignmentDataStore implements IProv
         @Override
         public StandardProviderRequestResolverAssignmentDataStore deserialize(@NotNull final HolderLookup.Provider provider, @NotNull final IFactoryController controller, @NotNull final CompoundTag nbt) throws Throwable
         {
-            IToken<?> token = controller.deserializeTag(provider, nbt.getCompound(NbtTagConstants.TAG_TOKEN));
-            Map<IToken<?>, Collection<IToken<?>>> map = NBTUtils.streamCompound(nbt.getList(NbtTagConstants.TAG_LIST, Tag.TAG_COMPOUND))
+            IToken<?> token = controller.deserializeTag(provider, nbt.getCompoundOrEmpty(NbtTagConstants.TAG_TOKEN));
+            Map<IToken<?>, Collection<IToken<?>>> map = NBTUtils.streamCompound(nbt.getListOrEmpty(NbtTagConstants.TAG_LIST))
                                                           .map(CompoundTag -> {
-                                                              final IToken<?> elementToken = controller.deserializeTag(provider, CompoundTag.getCompound(NbtTagConstants.TAG_TOKEN));
-                                                              final Collection<IToken<?>> elements = NBTUtils.streamCompound(CompoundTag.getList(NbtTagConstants.TAG_LIST,
-                                                                Tag.TAG_COMPOUND)).map(elementCompound -> (IToken<?>) controller.deserializeTag(provider, elementCompound))
+                                                              final IToken<?> elementToken = controller.deserializeTag(provider, CompoundTag.getCompoundOrEmpty(NbtTagConstants.TAG_TOKEN));
+                                                              final Collection<IToken<?>> elements = NBTUtils.streamCompound(CompoundTag.getListOrEmpty(NbtTagConstants.TAG_LIST))
+                                                                                                       .map(elementCompound -> (IToken<?>) controller.deserializeTag(provider, elementCompound))
                                                                                                        .collect(Collectors.toList());
 
                                                               return new Tuple<>(elementToken, elements);

@@ -10,13 +10,15 @@ import com.minecolonies.core.compatibility.CraftingTagAuditor;
 import com.minecolonies.core.datalistener.DiseasesListener;
 import com.minecolonies.core.datalistener.QuestJsonListener;
 import com.minecolonies.core.network.messages.client.UpdateClientWithCompatibilityMessage;
+import com.minecolonies.core.client.recipe.ClientRecipeCache;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.client.Minecraft;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.client.event.RecipesUpdatedEvent;
+import net.neoforged.neoforge.client.event.RecipesReceivedEvent;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut;
 import net.neoforged.neoforge.event.OnDatapackSyncEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import org.jetbrains.annotations.NotNull;
@@ -57,7 +59,7 @@ public class DataPackSyncEventHandler
         private static void discoverCompatLists(@NotNull final MinecraftServer server)
         {
             Log.getLogger().warn("Starting Compat Discovery");
-            IMinecoloniesAPI.getInstance().getColonyManager().getCompatibilityManager().getFurnaceRecipes().loadRecipes(server.getRecipeManager(), server.overworld());
+            IMinecoloniesAPI.getInstance().getColonyManager().getCompatibilityManager().getFurnaceRecipes().loadRecipes(net.minecraft.world.item.crafting.RecipeMap.create(server.getRecipeManager().getRecipes()), server.overworld());
             IMinecoloniesAPI.getInstance().getColonyManager().getCompatibilityManager().discover(server.getRecipeManager(), server.overworld());
             CustomRecipeManager.getInstance().resolveTemplates(server.registryAccess());
             CustomRecipeManager.getInstance().buildLootData(server.overworld());
@@ -92,6 +94,16 @@ public class DataPackSyncEventHandler
         @SubscribeEvent(priority = EventPriority.LOWEST)
         public static void onDataPackSync(final OnDatapackSyncEvent event)
         {
+            // Since 26.1 full RecipeHolder data is only synchronized for
+            // recipe types explicitly requested here. MineColonies needs
+            // these recipes client-side for profession compatibility
+            // analysis (EMI/recipe teaching), not for duplicating the
+            // vanilla recipe viewer.
+            event.sendRecipes(net.minecraft.world.item.crafting.RecipeType.CRAFTING);
+            event.sendRecipes(net.minecraft.world.item.crafting.RecipeType.SMELTING);
+            event.sendRecipes(
+              com.ldtteam.domumornamentum.recipe.ModRecipeTypes.ARCHITECTS_CUTTER.get());
+
             final CustomRecipeManager recipeManager = CustomRecipeManager.getInstance();
             final MinecraftServer server = event.getPlayerList().getServer();
             final GameProfile owner = server.getSingleplayerProfile();
@@ -132,10 +144,10 @@ public class DataPackSyncEventHandler
         @SubscribeEvent(priority = EventPriority.LOWEST)
         public static void sendOnLogin(final PlayerEvent.PlayerLoggedInEvent event)
         {
-            if (!event.getEntity().level().isClientSide && event.getEntity() instanceof ServerPlayer)
+            if (!event.getEntity().level().isClientSide() && event.getEntity() instanceof ServerPlayer serverPlayer)
             {
-                final MinecraftServer server = event.getEntity().getServer();
-                sendPackets((ServerPlayer) event.getEntity(), new UpdateClientWithCompatibilityMessage(server.registryAccess()));
+                final MinecraftServer server = ((net.minecraft.server.level.ServerLevel) serverPlayer.level()).getServer();
+                sendPackets(serverPlayer, new UpdateClientWithCompatibilityMessage(server.registryAccess()));
             }
         }
 
@@ -170,12 +182,19 @@ public class DataPackSyncEventHandler
         /**
          * Fired when the recipes are synched to client.  This happens after the {@link OnDatapackSyncEvent}.
          *
-         * @param event {@link RecipesUpdatedEvent}
+         * @param event {@link RecipesReceivedEvent}
          */
         @SubscribeEvent
-        public static void onRecipesLoaded(@NotNull final RecipesUpdatedEvent event)
+        public static void onRecipesLoaded(@NotNull final RecipesReceivedEvent event)
         {
-            IColonyManager.getInstance().getCompatibilityManager().getFurnaceRecipes().loadRecipes(event.getRecipeManager(), Minecraft.getInstance().level);
+            ClientRecipeCache.replace(event.getRecipeMap());
+            IColonyManager.getInstance().getCompatibilityManager().getFurnaceRecipes().loadRecipes(event.getRecipeMap(), Minecraft.getInstance().level);
+        }
+
+        @SubscribeEvent
+        public static void onDisconnect(@NotNull final LoggingOut event)
+        {
+            ClientRecipeCache.clear();
         }
     }
 }

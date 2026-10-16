@@ -60,17 +60,17 @@ public class CommandGetRanks implements IMCOPCommand
         GameProfile profile;
         try
         {
-            profile = GameProfileArgument.getGameProfiles(context, PLAYERNAME_ARG).stream().findFirst().orElse(null);
+            profile = GameProfileArgument.getGameProfiles(context, PLAYERNAME_ARG).stream().findFirst().map(p -> new GameProfile(p.id(), p.name())).orElse(null);
         }
         catch (CommandSyntaxException e)
         {
             return 0;
         }
 
-        if (context.getSource().getServer().getPlayerList().getPlayer(profile.getId()) == null)
+        if (context.getSource().getServer().getPlayerList().getPlayer(profile.id()) == null)
         {
             // could not find player with given name.
-            context.getSource().sendSuccess(() -> Component.translatable(CommandTranslationConstants.COMMAND_PLAYER_NOT_FOUND, profile.getName()), true);
+            context.getSource().sendSuccess(() -> Component.translatable(CommandTranslationConstants.COMMAND_PLAYER_NOT_FOUND, profile.name()), true);
             return 0;
         }
 
@@ -78,7 +78,7 @@ public class CommandGetRanks implements IMCOPCommand
         final List<IColony> colonies = IColonyManager.getInstance()
             .getAllColonies()
             .stream()
-            .filter(colony -> !colony.getPermissions().getRankNeutral().equals(colony.getPermissions().getRank(profile.getId())))
+            .filter(colony -> !colony.getPermissions().getRankNeutral().equals(colony.getPermissions().getRank(profile.id())))
             .toList();
         final int colonyCount = colonies.size();
         final int halfPage = (colonyCount % COLONIES_ON_PAGE == 0) ? 0 : 1;
@@ -110,15 +110,15 @@ public class CommandGetRanks implements IMCOPCommand
 
         for (final IColony colony : coloniesPage)
         {
-            final Rank rank = colony.getPermissions().getRank(profile.getId());
+            final Rank rank = colony.getPermissions().getRank(profile.id());
             context.getSource().sendSuccess(() -> Component.literal(String.format(COLONY_INFO_TEXT, colony.getID(), colony.getName(), rank.getName())), true);
         }
 
         final Component prevButton = Component.literal(PREV_PAGE)
-            .setStyle(Style.EMPTY.withBold(true).withColor(ChatFormatting.GOLD).withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, RANKS_COMMAND_SUGGESTED + prevPage)));
+            .setStyle(Style.EMPTY.withBold(true).withColor(ChatFormatting.GOLD).withClickEvent(new ClickEvent.RunCommand(RANKS_COMMAND_SUGGESTED + prevPage)));
 
         final Component nextButton = Component.literal(NEXT_PAGE)
-            .setStyle(Style.EMPTY.withBold(true).withColor(ChatFormatting.GOLD).withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, RANKS_COMMAND_SUGGESTED + nextPage)));
+            .setStyle(Style.EMPTY.withBold(true).withColor(ChatFormatting.GOLD).withClickEvent(new ClickEvent.RunCommand(RANKS_COMMAND_SUGGESTED + nextPage)));
 
         final MutableComponent beginLine = Component.literal(PAGE_LINE);
         final MutableComponent endLine = Component.literal(PAGE_LINE);

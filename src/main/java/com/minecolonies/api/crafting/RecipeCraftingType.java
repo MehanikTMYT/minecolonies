@@ -2,7 +2,7 @@ package com.minecolonies.api.crafting;
 
 import com.minecolonies.api.crafting.registry.CraftingType;
 import com.minecolonies.api.util.Log;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
@@ -29,7 +29,7 @@ public class RecipeCraftingType<C extends RecipeInput, T extends Recipe<C>> exte
      * @param recipeType the vanilla recipe type
      * @param predicate filter acceptable recipes, or null to accept all
      */
-    public RecipeCraftingType(@NotNull final ResourceLocation id,
+    public RecipeCraftingType(@NotNull final Identifier id,
                               @NotNull final RecipeType<T> recipeType,
                               @Nullable final Predicate<RecipeHolder<T>> predicate)
     {
@@ -40,11 +40,11 @@ public class RecipeCraftingType<C extends RecipeInput, T extends Recipe<C>> exte
 
     @Override
     @NotNull
-    public List<IGenericRecipe> findRecipes(@NotNull RecipeManager recipeManager,
+    public List<IGenericRecipe> findRecipes(@NotNull final RecipeMap recipeMap,
                                             @NotNull final Level world)
     {
         final List<IGenericRecipe> recipes = new ArrayList<>();
-        for (final RecipeHolder<T> recipe : recipeManager.getAllRecipesFor(recipeType))
+        for (final RecipeHolder<T> recipe : VanillaRecipeUtils.getAllRecipesFor(recipeMap, recipeType))
         {
             if (predicate != null && !predicate.test(recipe)) continue;
 
@@ -58,7 +58,7 @@ public class RecipeCraftingType<C extends RecipeInput, T extends Recipe<C>> exte
                                                @NotNull final Level world)
     {
         final T recipe = holder.value();
-        if (recipe.isSpecial() || recipe.getResultItem(world.registryAccess()).isEmpty()) return;     // invalid or special recipes
+        if (recipe.isSpecial() || VanillaRecipeUtils.getResultItem(recipe, world).isEmpty()) return;     // invalid or special recipes
         try
         {
             final IGenericRecipe genericRecipe = GenericRecipe.of(holder, world);

@@ -20,20 +20,17 @@ import com.minecolonies.api.eventbus.events.ColonyManagerLoadedModEvent;
 import com.minecolonies.api.eventbus.events.ColonyManagerUnloadedModEvent;
 import com.minecolonies.api.eventbus.events.colony.ColonyDeletedModEvent;
 import com.minecolonies.api.eventbus.events.colony.ColonyViewUpdatedModEvent;
-import com.minecolonies.api.sounds.SoundManager;
 import com.minecolonies.api.util.BlockPosUtil;
 import com.minecolonies.api.util.ColonyUtils;
 import com.minecolonies.api.util.DamageSourceKeys;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.core.MineColonies;
-import com.minecolonies.core.client.gui.WindowReactivateBuilding;
 import com.minecolonies.core.colony.requestsystem.management.manager.StandardRecipeManager;
 import com.minecolonies.core.network.messages.client.colony.ColonyViewRemoveMessage;
 import com.minecolonies.core.util.BackUpHelper;
 import com.minecolonies.core.util.ChunkDataHelper;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -45,7 +42,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -96,12 +92,20 @@ public final class ColonyManager implements IColonyManager
     /**
      * Global claim data from all colonies
      */
-    private Map<ResourceKey<Level>, Long2ObjectMap<ChunkClaimData>> chunkClaimData = new HashMap<>();
-
-    /**
-     * Client side sound manager.
+    /*
+     * PORT(26.1): chunk claims used to live in a chunk capability; the port keeps them here instead. In singleplayer the
+     * client and the integrated server share this singleton, so the two sides need separate maps: the client resets its
+     * views every tick while it has no level (main menu, world loading) and used to wipe the server's claims with them,
+     * after which the server no longer found any colony by position (town hall offered "found a new colony", huts were
+     * "outside of your colony").
      */
-    private SoundManager clientSoundManager;
+    private final Map<ResourceKey<Level>, Long2ObjectMap<ChunkClaimData>> serverChunkClaimData = new HashMap<>();
+    private final Map<ResourceKey<Level>, Long2ObjectMap<ChunkClaimData>> clientChunkClaimData = new HashMap<>();
+
+    private Map<ResourceKey<Level>, Long2ObjectMap<ChunkClaimData>> claimsForCurrentSide()
+    {
+        return net.neoforged.fml.util.thread.EffectiveSide.get().isClient() ? clientChunkClaimData : serverChunkClaimData;
+    }
 
     @Nullable
     private IServerColonySaveData getColonySaveData(final ServerLevel w)
@@ -430,13 +434,7 @@ public final class ColonyManager implements IColonyManager
     @Nullable
     public IColony getIColony(@NotNull final Level w, @NotNull final BlockPos pos)
     {
-        return w.isClientSide ? getColonyView(w, pos) : getColonyByPosFromWorld(w, pos);
-    }
-
-    @Override
-    public void openReactivationWindow(final BlockPos pos)
-    {
-        new WindowReactivateBuilding(pos).open();
+        return w.isClientSide() ? getColonyView(w, pos) : getColonyByPosFromWorld(w, pos);
     }
 
     @Override
@@ -472,7 +470,7 @@ public final class ColonyManager implements IColonyManager
     @Nullable
     public IColony getClosestIColony(@NotNull final Level w, @NotNull final BlockPos pos)
     {
-        return w.isClientSide ? getClosestColonyView(w, pos) : getClosestColony(w, pos);
+        return w.isClientSide() ? getClosestColonyView(w, pos) : getClosestColony(w, pos);
     }
 
     @Override
@@ -546,14 +544,14 @@ public final class ColonyManager implements IColonyManager
     @Nullable
     public IColony getIColonyByOwner(@NotNull final Level w, @NotNull final Player owner)
     {
-        return getIColonyByOwner(w, w.isClientSide ? owner.getUUID() : owner.getGameProfile().getId());
+        return getIColonyByOwner(w, w.isClientSide() ? owner.getUUID() : owner.getGameProfile().id());
     }
 
     @Override
     @Nullable
     public IColony getIColonyByOwner(@NotNull final Level w, final UUID owner)
     {
-        return w.isClientSide ? getColonyViewByOwner(owner, w.dimension()) : getColonyByOwner(owner);
+        return w.isClientSide() ? getColonyViewByOwner(owner, w.dimension()) : getColonyByOwner(owner);
     }
 
     /**
@@ -636,33 +634,16 @@ public final class ColonyManager implements IColonyManager
     {
         if (compound.contains(TAG_COMPATABILITY_MANAGER))
         {
-            compatibilityManager.read(provider, compound.getCompound(TAG_COMPATABILITY_MANAGER));
+            compatibilityManager.read(provider, compound.getCompoundOrEmpty(TAG_COMPATABILITY_MANAGER));
         }
 
-        recipeManager.read(provider, compound.getCompound(RECIPE_MANAGER_TAG));
-    }
-
-    @Override
-    public void onClientTick(@NotNull final ClientTickEvent.Pre event)
-    {
-        if (Minecraft.getInstance().level == null && !colonyViews.isEmpty())
-        {
-            //  Player has left the game, clear the Colony View cache
-            colonyViews.clear();
-        }
-
-
-        if (clientSoundManager == null)
-        {
-            clientSoundManager = new SoundManager();
-        }
-        clientSoundManager.tick();
+        recipeManager.read(provider, compound.getCompoundOrEmpty(RECIPE_MANAGER_TAG));
     }
 
     @Override
     public void onWorldTick(final @NotNull LevelTickEvent.Pre event)
     {
-        if (!event.getLevel().isClientSide)
+        if (!event.getLevel().isClientSide())
         {
             for (final IColony colony : getColonies(event.getLevel()))
             {
@@ -695,7 +676,7 @@ public final class ColonyManager implements IColonyManager
     @Override
     public void onWorldUnload(@NotNull final Level world)
     {
-        if (!world.isClientSide)
+        if (!world.isClientSide())
         {
             boolean hasColonies = false;
             for (@NotNull final IColony c : getColonies(world))
@@ -709,6 +690,8 @@ public final class ColonyManager implements IColonyManager
                 BackUpHelper.backupColonyData(world.registryAccess());
             }
 
+            // the claims of this level go with its colonies; otherwise they leak into the next world opened in this session
+            serverChunkClaimData.remove(world.dimension());
             IMinecoloniesAPI.getInstance().getEventBus().post(new ColonyManagerUnloadedModEvent(this));
         }
     }
@@ -894,7 +877,7 @@ public final class ColonyManager implements IColonyManager
     public void resetColonyViews()
     {
         colonyViews.clear();
-        chunkClaimData.clear();
+        clientChunkClaimData.clear();
     }
 
     @Override
@@ -910,27 +893,27 @@ public final class ColonyManager implements IColonyManager
     @Override
     public void addClaimData(final IColony colony, final Long2ObjectMap<ChunkClaimData> claimData)
     {
-        this.chunkClaimData.computeIfAbsent(colony.getDimension(), (k) -> new Long2ObjectOpenHashMap<>()).putAll(claimData);
+        (colony instanceof IColonyView ? clientChunkClaimData : serverChunkClaimData).computeIfAbsent(colony.getDimension(), (k) -> new Long2ObjectOpenHashMap<>()).putAll(claimData);
     }
 
     @Override
     public Map<ChunkPos, IChunkClaimData> getClaimData(final ResourceKey<Level> dimension)
     {
-        final Map<Long, ChunkClaimData> map = this.chunkClaimData.computeIfAbsent(dimension, (k) -> new Long2ObjectOpenHashMap<>());
-        return Maps.asMap(map.keySet().stream().map(ChunkPos::new).collect(Collectors.toSet()),
-                p -> map.getOrDefault(p.toLong(), null));
+        final Map<Long, ChunkClaimData> map = claimsForCurrentSide().computeIfAbsent(dimension, (k) -> new Long2ObjectOpenHashMap<>());
+        return Maps.asMap(map.keySet().stream().map(value -> new ChunkPos(ChunkPos.getX(value), ChunkPos.getZ(value))).collect(Collectors.toSet()),
+                p -> map.getOrDefault(p.pack(), null));
     }
 
     @Nullable
     @Override
     public IChunkClaimData getClaimData(final ResourceKey<Level> dimension, final ChunkPos pos)
     {
-        return this.chunkClaimData.computeIfAbsent(dimension, (k) -> new Long2ObjectOpenHashMap<>()).getOrDefault(pos.toLong(), null);
+        return claimsForCurrentSide().computeIfAbsent(dimension, (k) -> new Long2ObjectOpenHashMap<>()).getOrDefault(pos.pack(), null);
     }
 
     @Override
     public void addNewChunk(final Colony colony, final ChunkPos pos, final ChunkClaimData chunkClaimData)
     {
-        this.chunkClaimData.computeIfAbsent(colony.getDimension(), (k) -> new Long2ObjectOpenHashMap<>()).put(pos.toLong(), chunkClaimData);
+        serverChunkClaimData.computeIfAbsent(colony.getDimension(), (k) -> new Long2ObjectOpenHashMap<>()).put(pos.pack(), chunkClaimData);
     }
 }

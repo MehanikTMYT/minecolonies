@@ -1,5 +1,8 @@
 package com.minecolonies.core.entity.citizen;
 
+import com.minecolonies.api.util.ValueIOUtils;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
 import com.minecolonies.api.IMinecoloniesAPI;
 import com.minecolonies.api.blocks.AbstractBlockHut;
 import com.minecolonies.api.colony.*;
@@ -34,6 +37,7 @@ import com.minecolonies.api.items.ModTags;
 import com.minecolonies.api.sounds.EventType;
 import com.minecolonies.api.util.*;
 import com.minecolonies.api.util.MessageUtils.MessagePriority;
+import com.minecolonies.api.util.constant.GuardConstants;
 import com.minecolonies.api.util.constant.HappinessConstants;
 import com.minecolonies.api.util.constant.TranslationConstants;
 import com.minecolonies.api.util.constant.TypeConstants;
@@ -55,6 +59,7 @@ import com.minecolonies.core.entity.ai.workers.AbstractEntityAIBasic;
 import com.minecolonies.core.entity.ai.workers.CitizenAI;
 import com.minecolonies.core.entity.ai.workers.guard.AbstractEntityAIGuard;
 import com.minecolonies.core.entity.citizen.citizenhandlers.*;
+import com.minecolonies.core.entity.other.ICitizenJobMount;
 import com.minecolonies.core.entity.other.cavalry.CavalryHorseEntity;
 import com.minecolonies.core.entity.pathfinding.navigation.EntityNavigationUtils;
 import com.minecolonies.core.entity.pathfinding.navigation.MovementHandler;
@@ -73,6 +78,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
@@ -100,8 +106,8 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ShieldItem;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.neoforged.neoforge.common.CommonHooks;
-import net.neoforged.neoforge.event.entity.living.LivingShieldBlockEvent;
+import net.minecraft.world.level.storage.TagValueOutput;
+import net.neoforged.neoforge.common.damagesource.DamageContainer;
 import net.neoforged.neoforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -120,7 +126,6 @@ import static com.minecolonies.api.util.constant.StatisticsConstants.DEATH;
 import static com.minecolonies.api.util.constant.Suppression.INCREMENT_AND_DECREMENT_OPERATORS_SHOULD_NOT_BE_USED_IN_A_METHOD_CALL_OR_MIXED_WITH_OTHER_OPERATORS_IN_AN_EXPRESSION;
 import static com.minecolonies.api.util.constant.TranslationConstants.*;
 import static com.minecolonies.core.entity.ai.minimal.EntityAIInteractToggleAble.*;
-import static com.minecolonies.api.util.constant.GuardConstants.CAVALRY_RANGED_DAMAGE_VULNERABILITY;
 
 /**
  * The Class used to represent the citizen entities.
@@ -299,7 +304,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
      */
     private EntityState initialize()
     {
-        if (CompatibilityUtils.getWorldFromCitizen(this).isClientSide)
+        if (CompatibilityUtils.getWorldFromCitizen(this).isClientSide())
         {
             citizenColonyHandler.updateColonyClient();
             if (citizenColonyHandler.getColonyId() != 0 && citizenId != 0)
@@ -373,7 +378,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
             return result;
         }
 
-        if (CompatibilityUtils.getWorldFromCitizen(this).isClientSide && iColonyView != null)
+        if (CompatibilityUtils.getWorldFromCitizen(this).isClientSide() && iColonyView != null)
         {
             if (player.isShiftKeyDown() && !isInvisible())
             {
@@ -389,7 +394,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
             }
         }
 
-        if (!level().isClientSide && getCitizenData() != null)
+        if (!level().isClientSide() && getCitizenData() != null)
         {
             citizenData.setInteractedRecently(player.getUUID());
             final ColonyViewCitizenViewMessage message = new ColonyViewCitizenViewMessage((Colony) getCitizenData().getColony(), getCitizenData());
@@ -593,9 +598,9 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
 
             if (!level().isClientSide())
             {
-                addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 300));
+                addEffect(new MobEffectInstance(MobEffects.SPEED, 300));
 
-                playSound(SoundEvents.GENERIC_EAT, 1.5f, (float) SoundUtils.getRandomPitch(getRandom()));
+                playSound(SoundEvents.GENERIC_EAT.value(), 1.5f, (float) SoundUtils.getRandomPitch(getRandom()));
                 new ItemParticleEffectMessage(usedStack.copy(), getX(), getY(), getZ(), getXRot(), getYRot(), getEyeHeight()).sendToTrackingEntity(this);
                 ItemStackUtils.consumeFood(usedStack, this, player);
             }
@@ -625,7 +630,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
     {
         if (!level().isClientSide())
         {
-            playSound(SoundEvents.GENERIC_EAT, 1.5f, (float) SoundUtils.getRandomPitch(getRandom()));
+            playSound(SoundEvents.GENERIC_EAT.value(), 1.5f, (float) SoundUtils.getRandomPitch(getRandom()));
             // Position needs to be centered on citizen, Eat AI wrong too?
             new ItemParticleEffectMessage(usedStack.copy(), getX(), getY(), getZ(), getXRot(), getYRot(), getEyeHeight()).sendToTrackingEntity(this);
             if (citizenData != null)
@@ -674,9 +679,19 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
     }
 
     @Override
-    public void addAdditionalSaveData(final CompoundTag compound)
+    protected void addAdditionalSaveData(@NotNull final ValueOutput output)
     {
-        super.addAdditionalSaveData(compound);
+        super.addAdditionalSaveData(output);
+        final CompoundTag saveTag = new CompoundTag();
+        addAdditionalSaveDataTag(saveTag);
+        ValueIOUtils.writeAsTag(output, saveTag);
+    }
+
+    /**
+     * Writes the entity save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void addAdditionalSaveDataTag(final CompoundTag compound)
+    {
 
         // Avoid accessing chunks in here, may cause loads during unload
         compound.putInt(TAG_COLONY_ID, citizenColonyHandler.getColonyId());
@@ -687,16 +702,24 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
     }
 
     @Override
-    public void readAdditionalSaveData(final CompoundTag compound)
+    protected void readAdditionalSaveData(@NotNull final ValueInput input)
     {
-        super.readAdditionalSaveData(compound);
+        super.readAdditionalSaveData(input);
+        readAdditionalSaveDataTag(ValueIOUtils.readAsTag(input));
+    }
+
+    /**
+     * Reads the entity save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void readAdditionalSaveDataTag(final CompoundTag compound)
+    {
 
         if (compound.contains(TAG_COLONY_ID))
         {
-            citizenColonyHandler.setColonyId(compound.getInt(TAG_COLONY_ID));
+            citizenColonyHandler.setColonyId(compound.getIntOr(TAG_COLONY_ID, 0));
             if (compound.contains(TAG_CITIZEN))
             {
-                citizenId = compound.getInt(TAG_CITIZEN);
+                citizenId = compound.getIntOr(TAG_CITIZEN, 0);
             }
         }
         setPose(Pose.STANDING);
@@ -804,14 +827,14 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
         checkHeal();
         if (citizenData.getSaturation() <= 0)
         {
-            if (this.getEffect(MobEffects.MOVEMENT_SLOWDOWN) == null)
+            if (this.getEffect(MobEffects.SLOWNESS) == null)
             {
-                this.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, TICKS_SECOND * 30));
+                this.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, TICKS_SECOND * 30));
             }
         }
         else
         {
-            this.removeEffect(MobEffects.MOVEMENT_SLOWDOWN);
+            this.removeEffect(MobEffects.SLOWNESS);
         }
         return false;
     }
@@ -831,7 +854,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
      */
     public boolean canPathOnRails()
     {
-        if (level().isClientSide)
+        if (level().isClientSide())
         {
             final IColonyView colonyView = IColonyManager.getInstance().getColonyView(citizenColonyHandler.getColonyId(), level().dimension());
             if (colonyView != null)
@@ -850,7 +873,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
      */
     public boolean canClimbVines()
     {
-        if (level().isClientSide)
+        if (level().isClientSide())
         {
             final IColonyView colonyView = IColonyManager.getInstance().getColonyView(citizenColonyHandler.getColonyId(), level().dimension());
             if (colonyView != null)
@@ -867,9 +890,9 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
      */
     private void decreaseWalkingSaturation()
     {
-        if (walkDist - lastDistanceWalked > ACTIONS_EACH_BLOCKS_WALKED)
+        if (moveDist - lastDistanceWalked > ACTIONS_EACH_BLOCKS_WALKED)
         {
-            lastDistanceWalked = walkDist;
+            lastDistanceWalked = moveDist;
             decreaseSaturationForContinuousAction();
         }
     }
@@ -1223,7 +1246,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
     }
 
     @Override
-    public boolean hurt(@NotNull final DamageSource damageSource, final float damage)
+    public boolean hurtServer(@NotNull final ServerLevel level, @NotNull final DamageSource damageSource, final float damage)
     {
         // TODO: temporary debug data
         if (damageSource.getEntity() instanceof Player player && player.isCreative() && player.getMainHandItem().getItem() == ModItems.scanAnalyzer)
@@ -1231,7 +1254,9 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
             CompoundTag tag = new CompoundTag();
             try
             {
-                save(tag);
+                final TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, registryAccess());
+                save(output);
+                tag = output.buildResult();
             }
             catch (Exception e)
             {
@@ -1262,11 +1287,11 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
 
         if (getCitizenColonyHandler().getColonyOrRegister() == null)
         {
-            return super.hurt(damageSource, damage);
+            return super.hurtServer(level, damageSource, damage);
         }
 
         // Maxdmg cap so citizens need a certain amount of hits to die, so we get more gameplay value and less scaling issues.
-        return handleDamagePerformed(damageSource, damage, sourceEntity);
+        return handleDamagePerformed(level, damageSource, damage, sourceEntity);
     }
 
     ///////// -------------------- The Handlers -------------------- /////////
@@ -1342,7 +1367,11 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
         return (float) Math.min(MAX_SPEED_FACTOR, super.getSpeed());
     }
 
-    private boolean handleDamagePerformed(@NotNull final DamageSource damageSource, final float damage, final Entity sourceEntity)
+    private boolean handleDamagePerformed(
+      @NotNull final ServerLevel level,
+      @NotNull final DamageSource damageSource,
+      final float damage,
+      final Entity sourceEntity)
     {
         float damageInc = Math.min(damage, (getMaxHealth() * 0.2f));
 
@@ -1359,42 +1388,24 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
             {
                 if (damageSource.is(DamageTypeTags.IS_PROJECTILE))
                 {
-                    // Horses take more damage from fire, so increase the split.
-                    damageInc *= CAVALRY_RANGED_DAMAGE_VULNERABILITY;
-                }
-
-                float horseSplit = cav.getMountDamageSplit() * damageInc;
-                damageInc = damageInc - horseSplit;
-
-                horse.hurt(damageSource, horseSplit);
-            }
-        }
-
-        // For cavalry, allocate some of the damage to the horse.
-        if (citizenJobHandler.getColonyJob() instanceof JobCavalry cav && citizenData != null)
-        {
-            if (this.getVehicle() instanceof CavalryHorseEntity horse) 
-            {
-                if (damageSource.is(DamageTypeTags.IS_PROJECTILE))
-                {
                     // Cavalry take more damage from projectiles.
-                    damageInc *= CAVALRY_RANGED_DAMAGE_VULNERABILITY;
+                    damageInc *= GuardConstants.CAVALRY_RANGED_DAMAGE_VULNERABILITY;
                 }
 
                 float horseSplit = cav.getMountDamageSplit() * damageInc;
                 damageInc = damageInc - horseSplit;
 
-                horse.hurt(damageSource, horseSplit);
+                horse.hurtServer(level, damageSource, horseSplit);
             }
         }
 
-        if (!level().isClientSide && !this.isInvisible() && !damageSource.typeHolder().is(DamageTypes.FALL))
+        if (!level().isClientSide() && !this.isInvisible() && !damageSource.typeHolder().is(DamageTypes.FALL))
         {
             performMoveAway(sourceEntity);
         }
         setLastHurtMob(damageSource.getEntity());
 
-        if (!level().isClientSide)
+        if (!level().isClientSide())
         {
             if (citizenJobHandler.getColonyJob() instanceof AbstractJobGuard && citizenData != null)
             {
@@ -1417,31 +1428,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
             }
         }
 
-        boolean result = super.hurt(damageSource, damageInc);
-        if (!result)
-        {
-            LivingShieldBlockEvent ev;
-            if (damageInc > 0.0F && !this.damageContainers.empty() && (ev = CommonHooks.onDamageBlock(this, this.damageContainers.peek(), this.isDamageSourceBlocked(damageSource))).getBlocked())
-            {
-                final float blockedDamage = this.damageContainers.peek().getBlockedDamage();
-                if (blockedDamage > 0)
-                {
-                    if (getItemInHand(getUsedItemHand()).getItem() instanceof ShieldItem)
-                    {
-                        if (getHealth() > blockedDamage * GUARD_BLOCK_DAMAGE)
-                        {
-                            final float blockDamage = CombatRules.getDamageAfterAbsorb(this,blockedDamage * GUARD_BLOCK_DAMAGE,
-                              damageSource,
-                              (float) this.getArmorValue(),
-                              (float) this.getAttribute(Attributes.ARMOR_TOUGHNESS).getValue());
-                            setHealth(getHealth() - Math.max(GUARD_BLOCK_DAMAGE, blockDamage));
-                            result = true;
-                        }
-                        CitizenItemUtils.damageItemInHand(this, this.getUsedItemHand(), (int) (blockedDamage * GUARD_BLOCK_DAMAGE));
-                    }
-                }
-            }
-        }
+        final boolean result = super.hurtServer(level, damageSource, damageInc);
 
         if (!result)
         {
@@ -1458,7 +1445,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
             return true;
         }
 
-        if (!level().isClientSide)
+        if (!level().isClientSide())
         {
             CitizenItemUtils.updateArmorDamage(this, damageInc);
             if (citizenData != null)
@@ -1468,6 +1455,23 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
         }
 
         return true;
+    }
+
+    @Override
+    public void onDamageTaken(final DamageContainer damageContainer)
+    {
+        final float blockedDamage = damageContainer.getBlockedDamage();
+        if (blockedDamage > 0.0F && damageContainer.getNewDamage() <= 0.0F
+              && getItemInHand(getUsedItemHand()).getItem() instanceof ShieldItem)
+        {
+            if (getHealth() > blockedDamage * GUARD_BLOCK_DAMAGE)
+            {
+                final float blockDamage = CombatRules.getDamageAfterAbsorb(this, blockedDamage * GUARD_BLOCK_DAMAGE,
+                  damageContainer.getSource(), (float) getArmorValue(), (float) getAttribute(Attributes.ARMOR_TOUGHNESS).getValue());
+                setHealth(getHealth() - Math.max(GUARD_BLOCK_DAMAGE, blockDamage));
+            }
+            CitizenItemUtils.damageItemInHand(this, getUsedItemHand(), (int) (blockedDamage * GUARD_BLOCK_DAMAGE));
+        }
     }
 
     /**
@@ -1554,7 +1558,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
             super.doPush(entity);
         }
 
-        if (!level().isClientSide && getCitizenData() != null && entity instanceof AbstractEntityCitizen otherCitizen && otherCitizen.getCitizenData() != null)
+        if (!level().isClientSide() && getCitizenData() != null && entity instanceof AbstractEntityCitizen otherCitizen && otherCitizen.getCitizenData() != null)
         {
             getCitizenData().getCitizenDiseaseHandler().onCollission(otherCitizen.getCitizenData());
         }
@@ -1631,7 +1635,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
                     .append(Component.translatable(TranslationConstants.COLONIST_DEATH_LOCATION,
                             BlockPosUtil.calcDirection(getCitizenColonyHandler().getColonyOrRegister().getCenter(), blockPosition()).getLongText())
                         .withStyle(style -> style
-                            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                            .withHoverEvent(new HoverEvent.ShowText(
                                 Component.translatable("message.positiondist",
                                     getBlockX(),
                                     getBlockY(),
@@ -1641,7 +1645,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
                             ? Component.translatable(COM_MINECOLONIES_COREMOD_MOURN, getCitizenData().getName())
                             : Component.empty())
                     .append(gravePos != null ? Component.translatable(WARNING_GRAVE_SPAWNED).withStyle(style -> style
-                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                        .withHoverEvent(new HoverEvent.ShowText(
                             Component.translatable("message.positiondist",
                                 gravePos.getX(),
                                 gravePos.getY(),
@@ -1689,7 +1693,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
     }
 
     @Override
-    protected void dropEquipment()
+    protected void dropEquipment(final ServerLevel level)
     {
         //Drop actual inventory
         for (int i = 0; i < getInventoryCitizen().getSlots(); i++)
@@ -1703,7 +1707,6 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
     }
 
     @NotNull
-    @Override
     public Iterable<ItemStack> getAllSlots()
     {
         if (citizenData != null)
@@ -1714,7 +1717,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
         {
             return citizenDataView.getInventory().getIterableArmorAndHandInv();
         }
-        return super.getAllSlots();
+        return List.of();
     }
 
     @NotNull
@@ -1799,7 +1802,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
     }
 
     @Override
-    protected void pickUpItem(final ItemEntity itemEntity)
+    protected void pickUpItem(final ServerLevel level, final ItemEntity itemEntity)
     {
         /*
          * Intentionally left empty.
@@ -1832,7 +1835,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
     @Override
     public void queueSound(@NotNull final SoundEvent soundEvent, final BlockPos pos, final int length, final int repetitions)
     {
-        if (soundEvent == null || !BuiltInRegistries.SOUND_EVENT.containsKey(soundEvent.getLocation()))
+        if (soundEvent == null || !BuiltInRegistries.SOUND_EVENT.containsKey(soundEvent.location()))
         {
             return;
         }
@@ -1843,7 +1846,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
     @Override
     public void queueSound(@NotNull final SoundEvent soundEvent, final BlockPos pos, final int length, final int repetitions, final float volume, final float pitch)
     {
-        if (soundEvent == null || !BuiltInRegistries.SOUND_EVENT.containsKey(soundEvent.getLocation()))
+        if (soundEvent == null || !BuiltInRegistries.SOUND_EVENT.containsKey(soundEvent.location()))
         {
             return;
         }
@@ -1859,7 +1862,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
      */
     public boolean isActive()
     {
-        return level().isClientSide ? entityStateController.getState() == EntityState.ACTIVE_CLIENT : entityStateController.getState() == EntityState.ACTIVE_SERVER;
+        return level().isClientSide() ? entityStateController.getState() == EntityState.ACTIVE_CLIENT : entityStateController.getState() == EntityState.ACTIVE_SERVER;
     }
 
     @Override
@@ -1897,7 +1900,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
             citizenColonyHandler.onSyncDataUpdate(dataAccessor);
         }
 
-        if (level().isClientSide && dataAccessor == DATA_STYLE)
+        if (level().isClientSide() && dataAccessor == DATA_STYLE)
         {
             if (!TextureReloadListener.TEXTURE_PACKS.contains(getEntityData().get(DATA_STYLE)))
             {
@@ -1945,7 +1948,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
      */
     private boolean decreaseIdleSaturation()
     {
-        if (citizenData != null && level() != null && !level().isNight() && !citizenSleepHandler.isAsleep())
+        if (citizenData != null && level() != null && level().isBrightOutside() && !citizenSleepHandler.isAsleep())
         {
             final int buildingLevel = citizenData.getHomeBuilding() == null ? 0 :  citizenData.getHomeBuilding().getBuildingLevelEquivalent();
             double decrease = computeSaturationConsumptionFactor(buildingLevel);

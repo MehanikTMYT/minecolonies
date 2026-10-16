@@ -19,10 +19,10 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.animal.IronGolem;
-import net.minecraft.world.entity.npc.AbstractVillager;
+import net.minecraft.world.entity.animal.golem.IronGolem;
+import net.minecraft.world.entity.npc.villager.AbstractVillager;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 
 import static com.minecolonies.api.entity.mobs.RaiderMobUtils.MOB_ATTACK_DAMAGE;
 
@@ -116,9 +116,9 @@ public class RaiderRangedAI<T extends AbstractEntityMinecoloniesMonster & IThrea
             arrowEntity.setBaseDamage(10);
         }
 
-        if (user.getDifficulty() > ARROW_PIERCE_DIFFICULTY)
+        if (user.getDifficulty() > ARROW_PIERCE_DIFFICULTY && arrowEntity instanceof CustomArrowEntity customArrowEntity)
         {
-            arrowEntity.setPierceLevel((byte) 2);
+            customArrowEntity.setResearchPierceLevel((byte) 2);
         }
 
         // Shoot arrow

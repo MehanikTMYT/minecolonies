@@ -11,7 +11,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.Ticket;
 import net.minecraft.server.level.TicketType;
-import net.minecraft.util.SortedArraySet;
+import net.minecraft.world.level.TicketStorage;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -34,12 +34,12 @@ public class CommandColonyChunks implements IMCColonyOfficerCommand
 
         Set<TicketType> types = new HashSet<>();
 
+        final TicketStorage ticketStorage = context.getSource().getLevel().getDataStorage().get(TicketStorage.TYPE);
         for (final Long chunkLong : colony.getLoadedChunks())
         {
-            final SortedArraySet<Ticket<?>> tickets = context.getSource().getLevel().getChunkSource().chunkMap.getDistanceManager().tickets.get((long) chunkLong);
-            if (tickets != null)
+            if (ticketStorage != null)
             {
-                for (final Ticket<?> ticket : tickets)
+                for (final Ticket ticket : ticketStorage.getTickets(chunkLong))
                 {
                     types.add(ticket.getType());
                 }

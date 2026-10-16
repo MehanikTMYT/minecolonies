@@ -2,7 +2,7 @@
 	"credit": "Made by Imrielle with Blockbench",
 	"textures": {
 		"0": "minecolonies:block/books/booktexture_red",
-		"1": "entity/bell/bell_body",
+		"1": "minecolonies:block/decor/entity/bell/bell_body",
 		"2": "block/oak_planks",
 		"3": "block/stripped_spruce_log",
 		"4": "block/stripped_spruce_log_top",

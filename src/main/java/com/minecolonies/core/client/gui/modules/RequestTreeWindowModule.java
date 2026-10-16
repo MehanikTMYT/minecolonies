@@ -1,5 +1,4 @@
 package com.minecolonies.core.client.gui.modules;
-
 import com.ldtteam.blockui.Pane;
 import com.ldtteam.blockui.PaneBuilders;
 import com.ldtteam.blockui.controls.*;
@@ -7,10 +6,8 @@ import com.ldtteam.blockui.views.ScrollingList;
 import com.minecolonies.api.colony.IColonyView;
 import com.minecolonies.api.colony.requestsystem.request.IRequest;
 import com.minecolonies.api.colony.requestsystem.request.RequestState;
-import com.minecolonies.api.colony.requestsystem.requestable.IDeliverable;
 import com.minecolonies.api.colony.requestsystem.requestable.IStackBasedTask;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.core.client.gui.AbstractWindowSkeleton;
@@ -21,10 +18,9 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.wrapper.InvWrapper;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -180,15 +176,15 @@ public abstract class RequestTreeWindowModule implements IWindowWithLayoutModule
 
     @Override
     @NotNull
-    public final ResourceLocation getLayout()
+    public final Identifier getLayout()
     {
-        return new ResourceLocation(Constants.MOD_ID, "gui/layouthuts/layoutrequeststree.xml");
+        return Identifier.fromNamespaceAndPath(Constants.MOD_ID, "gui/layouthuts/layoutrequeststree.xml");
     }
 
     @Override
     public void onUpdate()
     {
-        if (!Screen.hasShiftDown())
+        if (!Minecraft.getInstance().hasShiftDown())
         {
             lifeCount++;
         }
@@ -214,7 +210,7 @@ public abstract class RequestTreeWindowModule implements IWindowWithLayoutModule
      *
      * @return the list of requests.
      */
-    private List<RequestWrapper> getCachedOpenRequests()
+    protected List<RequestWrapper> getCachedOpenRequests()
     {
         if (cachedOpenRequests == null)
         {
@@ -272,20 +268,18 @@ public abstract class RequestTreeWindowModule implements IWindowWithLayoutModule
      *
      * @param request the request to check if it's fulfillable
      */
-    public final boolean isFulfillable(final IRequest<?> request)
+    public boolean isFulfillable(final IRequest<?> request)
     {
-        if (!(this instanceof IRequestTreeSupportsFulfill) || !(request.getRequest() instanceof IDeliverable deliverable))
-        {
-            return false;
-        }
+        return false;
+    }
 
-        final RequestWrapper wrapper = getCachedOpenRequests().stream().filter(f -> f.request().getId().equals(request.getId())).findFirst().orElse(null);
-        if (wrapper == null)
-        {
-            return false;
-        }
-
-        return isCreative || InventoryUtils.hasItemInItemHandler(new InvWrapper(inventory), deliverable::matches);
+    /**
+     * Fulfills, needs to be implemented by windows that can do it.
+     * @param request the request to fulfill.
+     */
+    public void onFulfill(final @NotNull IRequest<?> request)
+    {
+        // Do nothing.
     }
 
     /**
@@ -313,6 +307,11 @@ public abstract class RequestTreeWindowModule implements IWindowWithLayoutModule
     private void cancel(@NotNull final Button button)
     {
         final int row = resourceList.getListElementIndexByPane(button);
+        if (getCachedOpenRequests().isEmpty())
+        {
+            return;
+        }
+
         cancel(getCachedOpenRequests().get(row).request());
     }
 
@@ -342,27 +341,25 @@ public abstract class RequestTreeWindowModule implements IWindowWithLayoutModule
      */
     private void onFulfill(@NotNull final Button button)
     {
-        if (!(this instanceof IRequestTreeSupportsFulfill fulfill))
-        {
-            return;
-        }
-
         final int row = resourceList.getListElementIndexByPane(button);
-
         if (getCachedOpenRequests().size() > row && row >= 0)
         {
             final IRequest<?> request = getCachedOpenRequests().get(row).request();
+            if (!isFulfillable(request))
+            {
+                return;
+            }
             try
             {
-                fulfill.onFulfill(request);
+                this.onFulfill(request);
             }
             catch (final Exception e)
             {
                 Log.getLogger().warn("Failed to fulfill request. This could happen by double clicking the fulfill button.", e);
             }
+            button.disable();
+            refreshOpenRequests();
         }
-        button.disable();
-        refreshOpenRequests();
     }
 
     /**
@@ -387,20 +384,12 @@ public abstract class RequestTreeWindowModule implements IWindowWithLayoutModule
     }
 
     /**
-     * Interface for setting that the request tree window supports fulfilling.
-     */
-    public interface IRequestTreeSupportsFulfill
-    {
-        void onFulfill(@NotNull final IRequest<?> request);
-    }
-
-    /**
      * Request wrapper class used to construct the request tree.
      *
      * @param request The request.
      * @param depth   The depth in the tree.
      */
-    private record RequestWrapper(
+    protected record RequestWrapper(
         IRequest<?> request,
         int depth)
     {}

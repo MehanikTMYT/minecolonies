@@ -33,24 +33,24 @@ public class CommandChangeOwner implements IMCColonyOfficerCommand
         GameProfile profile;
         try
         {
-            profile = GameProfileArgument.getGameProfiles(context, PLAYERNAME_ARG).stream().findFirst().orElse(null);
+            profile = GameProfileArgument.getGameProfiles(context, PLAYERNAME_ARG).stream().findFirst().map(p -> new GameProfile(p.id(), p.name())).orElse(null);
         }
         catch (CommandSyntaxException e)
         {
             return 0;
         }
 
-        final Player player = context.getSource().getServer().getPlayerList().getPlayer(profile.getId());
+        final Player player = context.getSource().getServer().getPlayerList().getPlayer(profile.id());
         if (player == null)
         {
             // could not find player with given name.
-            context.getSource().sendSuccess(() -> Component.translatableEscape(CommandTranslationConstants.COMMAND_PLAYER_NOT_FOUND, profile.getName()), true);
+            context.getSource().sendSuccess(() -> Component.translatableEscape(CommandTranslationConstants.COMMAND_PLAYER_NOT_FOUND, profile.name()), true);
             return 0;
         }
 
         colony.getPermissions().setOwner(player);
 
-        context.getSource().sendSuccess(() -> Component.translatableEscape(CommandTranslationConstants.COMMAND_OWNER_CHANGE_SUCCESS, profile.getName(), colony.getName()), true);
+        context.getSource().sendSuccess(() -> Component.translatableEscape(CommandTranslationConstants.COMMAND_OWNER_CHANGE_SUCCESS, profile.name(), colony.getName()), true);
         return 1;
     }
 

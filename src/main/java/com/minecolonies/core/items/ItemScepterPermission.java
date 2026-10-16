@@ -1,5 +1,7 @@
 package com.minecolonies.core.items;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.IColonyView;
 import com.minecolonies.api.colony.permissions.Action;
@@ -10,12 +12,12 @@ import com.minecolonies.api.util.MessageUtils;
 import com.minecolonies.core.network.messages.server.colony.ChangeFreeToInteractBlockMessage;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -65,7 +67,7 @@ public class ItemScepterPermission extends AbstractItemMinecolonies implements I
         final BlockState blockState = iColonyView.getWorld().getBlockState(pos);
         final Block block = blockState.getBlock();
 
-        final ChangeFreeToInteractBlockMessage.MessageType type = Screen.hasControlDown()
+        final ChangeFreeToInteractBlockMessage.MessageType type = Minecraft.getInstance().hasControlDown()
                 ? ChangeFreeToInteractBlockMessage.MessageType.REMOVE_BLOCK
                 : ChangeFreeToInteractBlockMessage.MessageType.ADD_BLOCK;
         final ChangeFreeToInteractBlockMessage message = new ChangeFreeToInteractBlockMessage(
@@ -84,7 +86,7 @@ public class ItemScepterPermission extends AbstractItemMinecolonies implements I
       final BlockPos pos,
       final IColonyView iColonyView)
     {
-        final ChangeFreeToInteractBlockMessage.MessageType type = Screen.hasControlDown()
+        final ChangeFreeToInteractBlockMessage.MessageType type = Minecraft.getInstance().hasControlDown()
                 ? ChangeFreeToInteractBlockMessage.MessageType.REMOVE_BLOCK
                 : ChangeFreeToInteractBlockMessage.MessageType.ADD_BLOCK;
         final ChangeFreeToInteractBlockMessage message = new ChangeFreeToInteractBlockMessage(iColonyView, pos, type);
@@ -102,7 +104,7 @@ public class ItemScepterPermission extends AbstractItemMinecolonies implements I
     @NotNull
     public InteractionResult useOn(final UseOnContext ctx)
     {
-        if (!ctx.getLevel().isClientSide)
+        if (!ctx.getLevel().isClientSide())
         {
             return InteractionResult.SUCCESS;
         }
@@ -125,20 +127,20 @@ public class ItemScepterPermission extends AbstractItemMinecolonies implements I
      */
     @Override
     @NotNull
-    public InteractionResultHolder<ItemStack> use(
+    public InteractionResult use(
       final Level worldIn,
       final Player playerIn,
       final InteractionHand hand)
     {
         final ItemStack scepter = playerIn.getItemInHand(hand);
-        if (worldIn.isClientSide)
+        if (worldIn.isClientSide())
         {
-            return new InteractionResultHolder<>(InteractionResult.SUCCESS, scepter);
+            return InteractionResult.SUCCESS.heldItemTransformedTo(scepter);
         }
 
         toggleItemMode(playerIn, scepter);
 
-        return new InteractionResultHolder<>(InteractionResult.SUCCESS, scepter);
+        return InteractionResult.SUCCESS.heldItemTransformedTo(scepter);
     }
 
     private static void toggleItemMode(final Player playerIn, final ItemStack stack)
@@ -191,16 +193,20 @@ public class ItemScepterPermission extends AbstractItemMinecolonies implements I
     }
 
     @Override
-    public void appendHoverText(@NotNull final ItemStack stack, @Nullable final TooltipContext ctx, @NotNull final List<Component> tooltip, @NotNull final TooltipFlag flags)
+    public void appendHoverText(@NotNull final ItemStack stack,
+      @Nullable final TooltipContext ctx,
+      @NotNull final TooltipDisplay display,
+      @NotNull final Consumer<Component> tooltip,
+      @NotNull final TooltipFlag flags)
     {
         final MutableComponent mode = switch (PermissionMode.readFromItemStack(stack))
         {
             case BLOCK -> Component.translatable(TOOL_PERMISSION_SCEPTER_MODE_BLOCK);
             case LOCATION -> Component.translatable(TOOL_PERMISSION_SCEPTER_MODE_LOCATION);
         };
-        tooltip.add(Component.translatable(TOOL_PERMISSION_SCEPTER_MODE, mode.withStyle(ChatFormatting.YELLOW)));
+        tooltip.accept(Component.translatable(TOOL_PERMISSION_SCEPTER_MODE, mode.withStyle(ChatFormatting.YELLOW)));
 
-        super.appendHoverText(stack, ctx, tooltip, flags);
+        super.appendHoverText(stack, ctx, display, tooltip, flags);
     }
 
     @NotNull

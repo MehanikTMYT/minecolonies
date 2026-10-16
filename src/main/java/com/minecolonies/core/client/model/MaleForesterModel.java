@@ -3,6 +3,7 @@
 // Paste this class into your mod and generate all required imports
 package com.minecolonies.core.client.model;
 
+import com.minecolonies.api.client.render.modeltype.CitizenRenderState;
 import com.minecolonies.api.client.render.modeltype.CitizenModel;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import net.minecraft.client.model.HumanoidModel;
@@ -13,7 +14,7 @@ import org.jetbrains.annotations.NotNull;
 
 import static com.minecolonies.core.entity.ai.workers.production.EntityAIWorkLumberjack.RENDER_META_LOGS;
 
-public class MaleForesterModel extends CitizenModel<AbstractEntityCitizen>
+public class MaleForesterModel extends CitizenModel
 {
     public MaleForesterModel(final ModelPart part)
     {
@@ -97,10 +98,10 @@ public class MaleForesterModel extends CitizenModel<AbstractEntityCitizen>
     }
 
     @Override
-    public void setupAnim(@NotNull final AbstractEntityCitizen entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch)
+    public void setupAnim(@NotNull final CitizenRenderState state)
     {
-        super.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
-        body.getChild("LogPack").getChild("Logs").visible = entity.getRenderMetadata().contains(RENDER_META_LOGS);
-        head.getChild("WoodsmanHat").visible = displayHat(entity);
+        super.setupAnim(state);
+        body.getChild("LogPack").getChild("Logs").visible = state.renderMetadata.contains(RENDER_META_LOGS);
+        head.getChild("WoodsmanHat").visible = displayHat(state);
     }
 }

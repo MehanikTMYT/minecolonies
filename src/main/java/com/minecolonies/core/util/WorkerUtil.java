@@ -23,7 +23,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.item.*;
@@ -118,7 +119,7 @@ public final class WorkerUtil
             return false;
         }
 
-        citizen.moveTo(
+        citizen.snapTo(
           spawnPoint.getX() + MIDDLE_BLOCK_OFFSET,
           spawnPoint.getY(),
           spawnPoint.getZ() + MIDDLE_BLOCK_OFFSET,
@@ -146,7 +147,7 @@ public final class WorkerUtil
         {
             for (final Tuple<EquipmentTypeEntry, ItemStack> tool : getOrInitTestTools())
             {
-                if (tool.getB() != null && tool.getB().getItem() instanceof DiggerItem)
+                if (tool.getB() != null && ItemStackUtils.isDiggerTool(tool.getB()))
                 {
                     if (state.getBlock() instanceof IMateriallyTexturedBlock materiallyTexturedBlock)
                     {
@@ -174,22 +175,26 @@ public final class WorkerUtil
      */
     public static int getCorrectHarvestLevelForBlock(final BlockState target)
     {
-        int required = 0;
-        for (final Tiers tier : Tiers.values())
-        {
-            TagKey<Block> tag = tier.getTag();
-            if (target.is(tag))
-            {
-                required = tier.ordinal();
-                break;
-            }
-        }
-
         if (target.getBlock() instanceof GlazedTerracottaBlock)
         {
             return 0;
         }
-        return required;
+
+        // Vanilla only ships explicit "needs tool" tags for the stone, iron and diamond tiers; anything else is
+        // harvestable with the lowest (wooden) tier. Levels match the former Tiers ordinals.
+        if (target.is(BlockTags.NEEDS_STONE_TOOL))
+        {
+            return 1;
+        }
+        if (target.is(BlockTags.NEEDS_IRON_TOOL))
+        {
+            return 2;
+        }
+        if (target.is(BlockTags.NEEDS_DIAMOND_TOOL))
+        {
+            return 3;
+        }
+        return 0;
     }
 
     /**
@@ -243,8 +248,8 @@ public final class WorkerUtil
                     if (te != null)
                     {
                         final CompoundTag teData = te.getTileEntityData();
-                        final ResourceLocation teId = teData == null ? null : ResourceLocation.tryParse(teData.getString("id"));
-                        final BlockEntityType<?> teType = teId == null ? null : BuiltInRegistries.BLOCK_ENTITY_TYPE.get(teId);
+                        final Identifier teId = teData == null ? null : Identifier.tryParse(teData.getStringOr("id", ""));
+                        final BlockEntityType<?> teType = teId == null ? null : BuiltInRegistries.BLOCK_ENTITY_TYPE.getValue(teId);
                         if (teType == BlockEntityType.SIGN || teType == BlockEntityType.HANGING_SIGN)
                         {
                             if (BlockEntity.loadStatic(te.getPos(), te.getState(), te.getTileEntityData(), level.registryAccess()) instanceof SignBlockEntity sign)

@@ -13,9 +13,7 @@ import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.entity.EntityTypeTest;
-import net.minecraft.world.level.portal.DimensionTransition;
 import net.minecraft.world.phys.Vec3;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -187,13 +185,6 @@ public abstract class AbstractFastMinecoloniesEntity extends PathfinderMob imple
     /**
      * Prevent citizens and visitors from travelling to other dimensions through portals.
      */
-    @Nullable
-    @Override
-    public Entity changeDimension(final DimensionTransition dimensionTransition)
-    {
-        return null;
-    }
-
     @Override
     public boolean canSpawnSprintParticle()
     {
@@ -201,20 +192,11 @@ public abstract class AbstractFastMinecoloniesEntity extends PathfinderMob imple
     }
 
     @Override
-    public void updateFluidOnEyes()
-    {
-        if (tickCount % 20 == randomVariance)
-        {
-            super.updateFluidOnEyes();
-        }
-    }
-
-    @Override
-    protected boolean updateInWaterStateAndDoFluidPushing()
+    protected boolean updateFluidInteraction()
     {
         if (tickCount % 10 == randomVariance % 10)
         {
-            isInFluid = super.updateInWaterStateAndDoFluidPushing();
+            isInFluid = super.updateFluidInteraction();
         }
 
         return isInFluid;
@@ -254,12 +236,12 @@ public abstract class AbstractFastMinecoloniesEntity extends PathfinderMob imple
     }
 
     @Override
-    public boolean isInWaterRainOrBubble()
+    public boolean isInWaterOrRain()
     {
         // Used to extinguish fire, only check if on fire
-        if (getRemainingFireTicks() > 0 || level().isClientSide)
+        if (getRemainingFireTicks() > 0 || level().isClientSide())
         {
-            return super.isInWaterRainOrBubble();
+            return super.isInWaterOrRain();
         }
 
         return false;
@@ -269,7 +251,7 @@ public abstract class AbstractFastMinecoloniesEntity extends PathfinderMob imple
     public void updateFallFlying()
     {
         // Simplified updateFallflying to only set flags when they did change
-        if (!this.level().isClientSide && tickCount % 5 == randomVariance % 5)
+        if (!this.level().isClientSide() && tickCount % 5 == randomVariance % 5)
         {
             boolean flag = this.getSharedFlag(7);
             if (!flag || this.onGround() || this.isPassenger() || this.hasEffect(MobEffects.LEVITATION))
@@ -278,11 +260,6 @@ public abstract class AbstractFastMinecoloniesEntity extends PathfinderMob imple
                 this.setSharedFlag(7, flag);
             }
         }
-    }
-
-    @Override
-    protected void sendDebugPackets()
-    {
     }
 
     @Override
@@ -333,13 +310,13 @@ public abstract class AbstractFastMinecoloniesEntity extends PathfinderMob imple
     }
 
     @Override
-    public boolean hurt(final DamageSource dmgSource, final float dmg)
+    public boolean hurtServer(final ServerLevel level, final DamageSource dmgSource, final float dmg)
     {
         if (dmgSource.getEntity() instanceof AbstractFastMinecoloniesEntity otherFastMinecolEntity && otherFastMinecolEntity.getTeamId() == getTeamId())
         {
             return false;
         }
-        return super.hurt(dmgSource, dmg);
+        return super.hurtServer(level, dmgSource, dmg);
     }
 
     /**

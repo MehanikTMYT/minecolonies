@@ -6,7 +6,7 @@ project.ext.customChangelogHeader = "\n" +
         "- Domum Ornamentum: ${project.domumOrnamentumVersion} (or above)\n" +
         "\n" +
         "### Optional Dependencies\n" +
-        "- JEI: ${project.jei_version} (or above)\n" +
+        "- EMI: ${project.emiVersion} (or above)\n" +
         "- Journeymap: ${project.jmapVersion} (or above)\n"
 
 if (project.hasProperty("dynamicTreesVersion")) {

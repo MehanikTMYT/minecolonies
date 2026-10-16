@@ -4,13 +4,14 @@ import com.minecolonies.api.util.Log;
 import com.google.common.hash.Hashing;
 import com.google.common.hash.HashingOutputStream;
 import com.mojang.blaze3d.platform.NativeImage;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
+import net.minecraft.util.ARGB;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.DataProvider;
 import net.minecraft.data.PackOutput;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
@@ -23,7 +24,6 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,7 +33,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import static com.minecolonies.api.util.constant.Constants.MOD_ID;
-import static net.minecraft.client.gui.components.PlayerFaceRenderer.*;
+import static net.minecraft.client.gui.components.PlayerFaceExtractor.*;
 
 /**
  * Datagen for entity_icon
@@ -54,7 +54,7 @@ public class DefaultEntityIconProvider implements DataProvider
         return "Default Citizen Icons";
     }
 
-    private static boolean IsEntitySkin(@NotNull final ResourceLocation id)
+    private static boolean IsEntitySkin(@NotNull final Identifier id)
     {
         return id.getPath().endsWith(".png") &&
                 (id.getPath().startsWith("textures/entity/citizen/") || id.getPath().startsWith("textures/entity/raiders/"));
@@ -75,7 +75,7 @@ public class DefaultEntityIconProvider implements DataProvider
             {
                 if (IsEntitySkin(id))
                 {
-                    final ResourceLocation iconId = new ResourceLocation(id.getNamespace(),
+                    final Identifier iconId = Identifier.fromNamespaceAndPath(id.getNamespace(),
                             id.getPath().replace("textures/entity/", "").replace(".png", ""));
                     icons.add(generateIcon(outputProvider, iconId, stream, cache));
                 }
@@ -86,7 +86,7 @@ public class DefaultEntityIconProvider implements DataProvider
     }
 
     private CompletableFuture<?> generateIcon(@NotNull final PackOutput.PathProvider outputProvider,
-                                              @NotNull final ResourceLocation id,
+                                              @NotNull final Identifier id,
                                               @NotNull final IoSupplier<InputStream> inputSupplier,
                                               @NotNull final CachedOutput cache)
     {
@@ -118,13 +118,13 @@ public class DefaultEntityIconProvider implements DataProvider
 
         for (int i = 0; i < 16; ++i)
         {
-            icon.blendPixel(0, i, 0x80000000);
-            icon.blendPixel(15, i, 0x80000000);
+            icon.setPixel(0, i, ARGB.alphaBlend(icon.getPixel(0, i), 0x80000000));
+            icon.setPixel(15, i, ARGB.alphaBlend(icon.getPixel(15, i), 0x80000000));
 
             if (i > 0 && i < 15)
             {
-                icon.blendPixel(i, 0, 0x80000000);
-                icon.blendPixel(i, 15, 0x80000000);
+                icon.setPixel(i, 0, ARGB.alphaBlend(icon.getPixel(i, 0), 0x80000000));
+                icon.setPixel(i, 15, ARGB.alphaBlend(icon.getPixel(i, 15), 0x80000000));
             }
         }
 
@@ -132,15 +132,12 @@ public class DefaultEntityIconProvider implements DataProvider
     }
 
     private static void saveIcon(@NotNull final PackOutput.PathProvider outputProvider,
-                                 @NotNull final ResourceLocation id,
+                                 @NotNull final Identifier id,
                                  @NotNull final NativeImage icon,
                                  @NotNull final CachedOutput cache) throws IOException
     {
-        final BufferedImage image;
-        try (final ByteArrayInputStream stream = new ByteArrayInputStream(icon.asByteArray()))
-        {
-            image = ImageIO.read(stream);
-        }
+        final BufferedImage image = new BufferedImage(icon.getWidth(), icon.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        image.setRGB(0, 0, icon.getWidth(), icon.getHeight(), icon.getPixels(), 0, icon.getWidth());
 
         // convert to 24-bit, to reduce file size a bit
         final BufferedImage optimized = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);

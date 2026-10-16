@@ -1,0 +1,213 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "minecolonies:blockhutalchemist",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutarchery",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutbaker",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutbarracks",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutbarrackstower",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutbeekeeper",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutblacksmith",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutbuilder",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutchickenherder",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutcitizen",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutcombatacademy",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutcomposter",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutconcretemixer",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutcook",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutcowboy",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutcrusher",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutdeliveryman",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutdyer",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutenchanter",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutfarmer",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutfield",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutfisherman",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutfletcher",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutflorist",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutgatehouse",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutglassblower",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutgraveyard",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutguardtower",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhuthospital",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutkitchen",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutlibrary",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutlumberjack",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutmechanic",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutminer",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutmysticalsite",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutnetherworker",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutplantation",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutplantationfield",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutrabbithutch",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutsawmill",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutschool",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutshepherd",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutsifter",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutsmeltery",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutstable",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutstonemason",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutstonesmeltery",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutswineherder",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhuttavern",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhuttownhall",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutuniversity",
+      "required": false
+    },
+    {
+      "id": "minecolonies:blockhutwarehouse",
+      "required": false
+    }
+  ]
+}

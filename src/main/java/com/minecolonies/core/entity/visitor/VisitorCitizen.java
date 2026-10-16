@@ -1,5 +1,8 @@
 package com.minecolonies.core.entity.visitor;
 
+import com.minecolonies.api.util.ValueIOUtils;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
 import com.minecolonies.api.colony.*;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.colony.permissions.Action;
@@ -33,6 +36,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -158,9 +162,9 @@ public class VisitorCitizen extends AbstractEntityCitizen
     }
 
     @Override
-    public boolean hurt(@NotNull final DamageSource damageSource, final float damage)
+    public boolean hurtServer(@NotNull final ServerLevel level, @NotNull final DamageSource damageSource, final float damage)
     {
-        if (!(damageSource.getEntity() instanceof EntityCitizen) && super.hurt(damageSource, damage))
+        if (!(damageSource.getEntity() instanceof EntityCitizen) && super.hurtServer(level, damageSource, damage))
         {
             if (damageSource.getEntity() instanceof LivingEntity && damage > 1.01f)
             {
@@ -425,7 +429,7 @@ public class VisitorCitizen extends AbstractEntityCitizen
             return result;
         }
 
-        if (CompatibilityUtils.getWorldFromCitizen(this).isClientSide)
+        if (CompatibilityUtils.getWorldFromCitizen(this).isClientSide())
         {
             if (player.isShiftKeyDown())
             {
@@ -457,7 +461,7 @@ public class VisitorCitizen extends AbstractEntityCitizen
         {
             if (!level().isClientSide())
             {
-                playSound(SoundEvents.GENERIC_EAT, 1.5f, (float) SoundUtils.getRandomPitch(getRandom()));
+                playSound(SoundEvents.GENERIC_EAT.value(), 1.5f, (float) SoundUtils.getRandomPitch(getRandom()));
                 new ItemParticleEffectMessage(usedStack.copy(), getX(), getY(), getZ(), getXRot(), getYRot(), getEyeHeight()).sendToTrackingEntity(this);
                 ItemStackUtils.consumeFood(usedStack, this, player);
                 MessageUtils.forCitizen(this, MESSAGE_INTERACTION_VISITOR_FOOD).sendTo(player);
@@ -504,12 +508,12 @@ public class VisitorCitizen extends AbstractEntityCitizen
     {
         super.aiStep();
 
-        if (lastHurtByPlayerTime > 0)
+        if (getLastHurtByPlayerMemoryTime() > 0)
         {
             markDirty(0);
         }
 
-        if (CompatibilityUtils.getWorldFromCitizen(this).isClientSide)
+        if (CompatibilityUtils.getWorldFromCitizen(this).isClientSide())
         {
             citizenColonyHandler.updateColonyClient();
             if (citizenColonyHandler.getColonyId() != 0 && citizenId != 0 && getOffsetTicks() % TICKS_20 == 0)
@@ -533,9 +537,19 @@ public class VisitorCitizen extends AbstractEntityCitizen
     }
 
     @Override
-    public void addAdditionalSaveData(final CompoundTag compound)
+    protected void addAdditionalSaveData(@NotNull final ValueOutput output)
     {
-        super.addAdditionalSaveData(compound);
+        super.addAdditionalSaveData(output);
+        final CompoundTag saveTag = new CompoundTag();
+        addAdditionalSaveDataTag(saveTag);
+        ValueIOUtils.writeAsTag(output, saveTag);
+    }
+
+    /**
+     * Writes the entity save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void addAdditionalSaveDataTag(final CompoundTag compound)
+    {
 
         compound.putInt(TAG_COLONY_ID, citizenColonyHandler.getColonyId());
         if (citizenData != null)
@@ -545,16 +559,24 @@ public class VisitorCitizen extends AbstractEntityCitizen
     }
 
     @Override
-    public void readAdditionalSaveData(final CompoundTag compound)
+    protected void readAdditionalSaveData(@NotNull final ValueInput input)
     {
-        super.readAdditionalSaveData(compound);
+        super.readAdditionalSaveData(input);
+        readAdditionalSaveDataTag(ValueIOUtils.readAsTag(input));
+    }
+
+    /**
+     * Reads the entity save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void readAdditionalSaveDataTag(final CompoundTag compound)
+    {
 
         if (compound.contains(TAG_COLONY_ID))
         {
-            citizenColonyHandler.setColonyId(compound.getInt(TAG_COLONY_ID));
+            citizenColonyHandler.setColonyId(compound.getIntOr(TAG_COLONY_ID, 0));
             if (compound.contains(TAG_CITIZEN))
             {
-                citizenId = compound.getInt(TAG_CITIZEN);
+                citizenId = compound.getIntOr(TAG_CITIZEN, 0);
             }
         }
     }
@@ -586,7 +608,7 @@ public class VisitorCitizen extends AbstractEntityCitizen
     }
 
     @Override
-    protected void dropEquipment()
+    protected void dropEquipment(@NotNull final ServerLevel level)
     {
         //Drop actual inventory
         for (int i = 0; i < getInventoryCitizen().getSlots(); i++)

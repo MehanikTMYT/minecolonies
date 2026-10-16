@@ -1,7 +1,7 @@
 package com.minecolonies.api.util.constant;
 
 import net.minecraft.client.gui.components.WidgetSprites;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.common.util.Size2i;
 
 import static com.minecolonies.api.util.constant.Constants.MOD_ID;
@@ -914,8 +914,8 @@ public final class WindowConstants
     public static final int    SLIGHTLY_BLUE           = 100;
     public static final int    BUTTON_HEIGHT           = 17;
     public static final int    BUTTON_LENGTH           = 129;
-    public static final int    BUTTON_Y_BUFFER           = 3;
-    public static final int    BUTTON_X_BUFFER           = 10;
+    public static final int    BUTTON_Y_BUFFER         = 6;
+    public static final int    BUTTON_X_BUFFER         = 10;
     public static final String RESPONSE_BOX_ID         = "responseOptions";
     public static final String MEDIUM_SIZED_BUTTON_RES = "textures/gui/builderhut/builder_button_medium_large.png";
     public static final String MEDIUM_SIZED_BUTTON_DIS = "textures/gui/builderhut/builder_button_medium_large_disabled.png";
@@ -1042,15 +1042,15 @@ public final class WindowConstants
      * Crafting switch-output button.
      */
     public static final WidgetSprites CRAFTING_SWITCH = new WidgetSprites(
-        new ResourceLocation(MOD_ID, "craftingswitch"),
-        new ResourceLocation(MOD_ID, "craftingswitch_hover"));
+        Identifier.fromNamespaceAndPath(MOD_ID, "craftingswitch"),
+        Identifier.fromNamespaceAndPath(MOD_ID, "craftingswitch_hover"));
 
     /**
      * Crafting request-list button.
      */
     public static final WidgetSprites CRAFTING_LIST = new WidgetSprites(
-        new ResourceLocation(MOD_ID, "craftinglist"),
-        new ResourceLocation(MOD_ID, "craftinglist_hover"));
+        Identifier.fromNamespaceAndPath(MOD_ID, "craftinglist"),
+        Identifier.fromNamespaceAndPath(MOD_ID, "craftinglist_hover"));
 
     /**
      * Switch button size.

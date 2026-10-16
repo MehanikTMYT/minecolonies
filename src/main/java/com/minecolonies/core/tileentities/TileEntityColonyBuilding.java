@@ -1,5 +1,6 @@
 package com.minecolonies.core.tileentities;
 
+import net.minecraft.world.level.storage.ValueInput;
 import com.ldtteam.structurize.api.RotationMirror;
 import com.ldtteam.structurize.blueprints.v1.Blueprint;
 import com.ldtteam.structurize.storage.StructurePackMeta;
@@ -34,7 +35,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -110,7 +111,7 @@ public class TileEntityColonyBuilding extends AbstractTileEntityColonyBuilding i
     /**
      * The name of the building location.
      */
-    public ResourceLocation registryName;
+    public Identifier registryName;
 
     /**
      * Create the combined inv wrapper for the building.
@@ -177,7 +178,7 @@ public class TileEntityColonyBuilding extends AbstractTileEntityColonyBuilding i
             {
                 colony = IColonyManager.getInstance().getColonyByPosFromWorld(getLevel(), this.getBlockPos());
             }
-            else if (level.isClientSide)
+            else if (level.isClientSide())
             {
                 colony = IColonyManager.getInstance().getColonyView(colonyId, getLevel().dimension());
             }
@@ -187,14 +188,14 @@ public class TileEntityColonyBuilding extends AbstractTileEntityColonyBuilding i
             }
 
             // It's most probably previewed building, please don't spam it here.
-            if (colony == null && !getLevel().isClientSide)
+            if (colony == null && !getLevel().isClientSide())
             {
                 //log on the server
                 //Log.getLogger().info(String.format("TileEntityColonyBuilding at %s:[%d,%d,%d] had colony.",getWorld().getWorldInfo().getWorldName(), pos.getX(), pos.getY(), pos.getZ()));
             }
         }
 
-        if (building == null && colony != null && !getLevel().isClientSide)
+        if (building == null && colony != null && !getLevel().isClientSide())
         {
             building = colony.getServerBuildingManager().getBuilding(getPosition());
             if (building != null)
@@ -282,21 +283,20 @@ public class TileEntityColonyBuilding extends AbstractTileEntityColonyBuilding i
     @Override
     public CompoundTag getUpdateTag(@NotNull final HolderLookup.Provider provider)
     {
-        return saveWithId(provider);
+        return saveWithoutMetadata(provider);
     }
 
     @Override
-    public void handleUpdateTag(final CompoundTag tag, @NotNull final HolderLookup.Provider provider)
+    public void handleUpdateTag(@NotNull final ValueInput input)
     {
-        this.loadAdditional(tag, provider);
+        this.loadAdditional(input);
     }
 
     @Override
-    public void onDataPacket(final Connection net, final ClientboundBlockEntityDataPacket packet, @NotNull final HolderLookup.Provider provider)
+    public void onDataPacket(final Connection net, @NotNull final ValueInput input)
     {
-        final CompoundTag compound = packet.getTag();
-        colonyId = compound.getInt(TAG_COLONY);
-        super.onDataPacket(net, packet, provider);
+        colonyId = input.getIntOr(TAG_COLONY, 0);
+        super.onDataPacket(net, input);
     }
 
     @Override
@@ -354,24 +354,24 @@ public class TileEntityColonyBuilding extends AbstractTileEntityColonyBuilding i
     }
 
     @Override
-    public void loadAdditional(@NotNull final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
+    protected void loadAdditionalTag(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
     {
-        super.loadAdditional(compound, provider);
+        super.loadAdditionalTag(compound, provider);
         if (compound.contains(TAG_COLONY))
         {
-            colonyId = compound.getInt(TAG_COLONY);
+            colonyId = compound.getIntOr(TAG_COLONY, 0);
         }
 
-        if (compound.contains(TAG_ROTATION_MIRROR, Tag.TAG_BYTE))
+        if (compound.contains(TAG_ROTATION_MIRROR))
         {
-            rotationMirror = RotationMirror.values()[compound.getByte(TAG_ROTATION_MIRROR)];
+            rotationMirror = RotationMirror.values()[compound.getByteOr(TAG_ROTATION_MIRROR, (byte) 0)];
         }
 
         String packName;
         String path;
         if (compound.contains(TAG_STYLE) && !compound.getString(TAG_STYLE).isEmpty())
         {
-            packName = BlueprintMapping.getStyleMapping(compound.getString(TAG_STYLE));
+            packName = BlueprintMapping.getStyleMapping(compound.getStringOr(TAG_STYLE, ""));
 
             if (this.getSchematicName().isEmpty())
             {
@@ -380,14 +380,14 @@ public class TileEntityColonyBuilding extends AbstractTileEntityColonyBuilding i
             else
             {
                 final String level = this.getSchematicName().substring(this.getSchematicName().length() - 1);
-                path = BlueprintMapping.getPathMapping(compound.getString(TAG_STYLE), this.getSchematicName().substring(0, this.getSchematicName().length() - 1)) + level
+                path = BlueprintMapping.getPathMapping(compound.getStringOr(TAG_STYLE, ""), this.getSchematicName().substring(0, this.getSchematicName().length() - 1)) + level
                          + ".blueprint";
             }
         }
         else
         {
-            packName = compound.getString(TAG_PACK);
-            path = compound.getString(TAG_PATH);
+            packName = compound.getStringOr(TAG_PACK, "");
+            path = compound.getStringOr(TAG_PATH, "");
         }
 
         if (packName == null || packName.isEmpty())
@@ -426,15 +426,15 @@ public class TileEntityColonyBuilding extends AbstractTileEntityColonyBuilding i
 
         if (compound.contains(TAG_BUILDING_TYPE))
         {
-            registryName = ResourceLocation.parse(compound.getString(TAG_BUILDING_TYPE));
+            registryName = Identifier.parse(compound.getStringOr(TAG_BUILDING_TYPE, ""));
         }
         buildingPos = worldPosition;
     }
 
     @Override
-    public void saveAdditional(@NotNull final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
+    protected void saveAdditionalTag(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
     {
-        super.saveAdditional(compound, provider);
+        super.saveAdditionalTag(compound, provider);
         compound.putInt(TAG_COLONY, colonyId);
         if (rotationMirror != null)
         {
@@ -456,7 +456,7 @@ public class TileEntityColonyBuilding extends AbstractTileEntityColonyBuilding i
             invalidateCapabilities();
             combinedInv = null;
         }
-        if (!getLevel().isClientSide && colonyId == 0)
+        if (!getLevel().isClientSide() && colonyId == 0)
         {
             final IColony tempColony = IColonyManager.getInstance().getColonyByPosFromWorld(getLevel(), this.getPosition());
             if (tempColony != null)
@@ -597,11 +597,11 @@ public class TileEntityColonyBuilding extends AbstractTileEntityColonyBuilding i
     }
 
     @Override
-    public ResourceLocation getBuildingName()
+    public Identifier getBuildingName()
     {
         if (registryName != null && !registryName.getPath().isEmpty())
         {
-            return new ResourceLocation(registryName.getNamespace(), registryName.getPath().replace("home", "residence"));
+            return Identifier.fromNamespaceAndPath(registryName.getNamespace(), registryName.getPath().replace("home", "residence"));
         }
         return getBlockState().getBlock() instanceof AbstractBlockHut<?> ? ((AbstractBlockHut<?>) getBlockState().getBlock()).getBuildingEntry().getRegistryName() : null;
     }
@@ -720,7 +720,7 @@ public class TileEntityColonyBuilding extends AbstractTileEntityColonyBuilding i
         if (info.getTileEntityData() != null)
         {
             final CompoundTag teCompound = info.getTileEntityData().copy();
-            final CompoundTag tagData = teCompound.getCompound(TAG_BLUEPRINTDATA);
+            final CompoundTag tagData = teCompound.getCompoundOrEmpty(TAG_BLUEPRINTDATA);
 
             tagData.putString(TAG_PACK, blueprint.getPackName());
             final String location = StructurePacks.getStructurePack(blueprint.getPackName()).getSubPath(blueprint.getFilePath().resolve(blueprint.getFileName()));

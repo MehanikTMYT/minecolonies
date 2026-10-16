@@ -1,5 +1,6 @@
 package com.minecolonies.core.entity.pathfinding;
 
+import net.minecraft.world.level.block.LilyPadBlock;
 import com.ldtteam.domumornamentum.block.decorative.FloatingCarpetBlock;
 import com.ldtteam.domumornamentum.block.decorative.PanelBlock;
 import com.ldtteam.domumornamentum.block.vanilla.TrapdoorBlock;
@@ -31,7 +32,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PathfindingUtils
@@ -57,9 +61,9 @@ public class PathfindingUtils
      * @param reached the reached blocks.
      * @param players the tracking players.
      */
-    public static void syncDebugReachedPositions(final HashSet<BlockPos> reached, final List<ServerPlayer> players)
+    public static void syncDebugReachedPositions(final BlockPos reached, final List<ServerPlayer> players)
     {
-        if (reached.isEmpty() || players.isEmpty())
+        if (reached == null || players.isEmpty())
         {
             return;
         }
@@ -91,7 +95,7 @@ public class PathfindingUtils
 
         // Check if the entity is standing ontop of another block with part of its bb
         final BlockPos.MutableBlockPos below = new BlockPos.MutableBlockPos(pos.getX(), pos.getY() - 1, pos.getZ());
-        if (b instanceof CarpetBlock || b instanceof FloatingCarpetBlock || b instanceof WaterlilyBlock)
+        if (b instanceof CarpetBlock || b instanceof FloatingCarpetBlock || b instanceof LilyPadBlock)
         {
             return pos.above().immutable();
         }
@@ -151,7 +155,7 @@ public class PathfindingUtils
             bs = down;
             down = level.getBlockState(pos.below());
 
-            if (pos.getY() < entity.getCommandSenderWorld().getMinBuildHeight())
+            if (pos.getY() < entity.level().getMinY())
             {
                 return entity.blockPosition();
             }
@@ -206,7 +210,7 @@ public class PathfindingUtils
             || !state.getBlock().hasCollision
             || state.getBlock() instanceof CarpetBlock
             || state.getBlock() instanceof FloatingCarpetBlock
-            || state.getBlock() instanceof WaterlilyBlock;
+            || state.getBlock() instanceof LilyPadBlock;
     }
 
     /**

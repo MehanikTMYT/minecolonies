@@ -16,8 +16,6 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
@@ -127,11 +125,10 @@ public class RequestBasedInteraction extends ServerCitizenInteraction
     public void deserializeNBT(@NotNull final HolderLookup.Provider provider, @NotNull final CompoundTag compoundNBT)
     {
         super.deserializeNBT(provider, compoundNBT);
-        this.token = StandardFactoryController.getInstance().deserializeTag(provider, compoundNBT.getCompound(TOKEN_TAG));
+        this.token = StandardFactoryController.getInstance().deserializeTag(provider, compoundNBT.getCompoundOrEmpty(TOKEN_TAG));
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
     public void onWindowOpened(final BOWindow window, final ICitizenDataView dataView)
     {
         final IColony colony = IColonyManager.getInstance().getColonyView(dataView.getColonyId(), Minecraft.getInstance().player.level().dimension());
@@ -151,7 +148,6 @@ public class RequestBasedInteraction extends ServerCitizenInteraction
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
     public boolean onClientResponseTriggered(final int responseId, final Player player, final ICitizenDataView data, final BOWindow window)
     {
         if (((TranslatableContents) getPossibleResponses().get(responseId).getContents()).getKey().equals("com.minecolonies.coremod.gui.chat.fulfill"))

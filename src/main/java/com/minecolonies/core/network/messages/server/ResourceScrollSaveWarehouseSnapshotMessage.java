@@ -10,6 +10,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
 
@@ -82,9 +83,13 @@ public class ResourceScrollSaveWarehouseSnapshotMessage extends AbstractServerPl
     @Override
     protected void onExecute(final IPayloadContext ctxIn, final ServerPlayer player)
     {
-        player.getInventory().items.stream()
-          .filter(stack -> stack.getItem() instanceof ItemResourceScroll)
-          .filter(stack -> Objects.equals(builderPos, BuildingId.readFromItemStack(stack).id()))
-          .forEach(stack -> new WarehouseSnapshot(snapshot, workOrderHash).writeToItemStack(stack));
+        for (final ItemStack stack : player.getInventory())
+        {
+            if (stack.getItem() instanceof ItemResourceScroll
+                  && Objects.equals(builderPos, BuildingId.readFromItemStack(stack).id()))
+            {
+                new WarehouseSnapshot(snapshot, workOrderHash).writeToItemStack(stack);
+            }
+        }
     }
 }

@@ -1,5 +1,9 @@
 package com.minecolonies.api.crafting;
 
+import net.minecraft.world.item.crafting.display.SlotDisplay;
+import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.world.item.Item;
+import net.minecraft.core.Holder;
 import com.minecolonies.apiimp.initializer.ModIngredientTypeInitializer;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -16,7 +20,7 @@ import java.util.stream.Stream;
 
 /**
  * An ingredient that can be used in a vanilla recipe to require more than one item in a particular input slot.
- * Similar to {@link net.neoforged.neoforge.common.crafting.SizedIngredient}, but this deliberately skips the
+ * Similar to {@link net.neoforged.neoforge.common.crafting.ResearchIngredient}, but this deliberately skips the
  * count check in {@link #test(ItemStack)} to more easily support consuming across multiple inventory slots --
  * and unlike that, it participates as a custom ingredient directly.
  *
@@ -34,13 +38,13 @@ import java.util.stream.Stream;
 public record CountedIngredient(@NotNull Ingredient child, int count) implements ICustomIngredient
 {
     public static final MapCodec<CountedIngredient> CODEC = RecordCodecBuilder.mapCodec(builder -> builder
-        .group(Ingredient.CODEC_NONEMPTY.fieldOf("item").forGetter(CountedIngredient::child),
+        .group(Ingredient.CODEC.fieldOf("item").forGetter(CountedIngredient::child),
           ExtraCodecs.POSITIVE_INT.optionalFieldOf("count", 1).forGetter(CountedIngredient::count))
         .apply(builder, CountedIngredient::new));
 
     public CountedIngredient
     {
-        if (child == Ingredient.EMPTY || count <= 0) throw new IllegalArgumentException("Counted ingredient must have a child");
+        if (child.isEmpty() || count <= 0) throw new IllegalArgumentException("Counted ingredient must have a child");
     }
 
     /**
@@ -80,10 +84,27 @@ public record CountedIngredient(@NotNull Ingredient child, int count) implements
 
     @NotNull
     @Override
-    public Stream<ItemStack> getItems()
+    public Stream<Holder<Item>> items()
     {
-        return Arrays.stream(child.getItems())
-                .map(ItemStack::copy)
-                .peek(s -> s.setCount(this.count));
+        return child.items();
+    }
+
+    /**
+     * The required count is no longer part of the matched items, so it is carried by the display instead; that is what
+     * recipe viewers read to show how many items one craft consumes.
+     *
+     * @return the display of this ingredient, with the required count applied.
+     */
+    @NotNull
+    @Override
+    public SlotDisplay display()
+    {
+        return new SlotDisplay.Composite(child.items()
+                .map(item -> {
+                    final ItemStack stack = new ItemStack(item);
+                    stack.setCount(this.count);
+                    return (SlotDisplay) new SlotDisplay.ItemStackSlotDisplay(ItemStackTemplate.fromNonEmptyStack(stack));
+                })
+                .toList());
     }
 }

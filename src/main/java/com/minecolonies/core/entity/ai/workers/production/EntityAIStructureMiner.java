@@ -29,7 +29,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
@@ -39,9 +39,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootParams.Builder;
 import net.minecraft.world.level.storage.loot.LootTable;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParamSet;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
-import net.neoforged.neoforge.common.ItemAbilities;
+import net.minecraft.util.context.ContextKeySet;
+import net.minecraft.tags.ItemTags;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -69,7 +69,7 @@ public class EntityAIStructureMiner extends AbstractEntityAIStructureWithWorkOrd
     /**
      * The loot parameter set definition
      */
-    public static final LootContextParamSet LUCKY_ORE_PARAM_SET = (new LootContextParamSet.Builder())
+    public static final ContextKeySet LUCKY_ORE_PARAM_SET = (new ContextKeySet.Builder())
                                                                     .required(LootContextParams.ORIGIN)
                                                                     .required(LootContextParams.THIS_ENTITY)
                                                                     .required(LootContextParams.TOOL)
@@ -78,7 +78,7 @@ public class EntityAIStructureMiner extends AbstractEntityAIStructureWithWorkOrd
     /**
      * Lucky ore loot table
      */
-    public static final ResourceLocation LUCKY_ORE_LOOT_TABLE = new ResourceLocation(Constants.MOD_ID, "miner/lucky_ore");
+    public static final Identifier LUCKY_ORE_LOOT_TABLE = Identifier.fromNamespaceAndPath(Constants.MOD_ID, "miner/lucky_ore");
 
     /**
      * Lead the miner to the other side of the shaft.
@@ -130,7 +130,7 @@ public class EntityAIStructureMiner extends AbstractEntityAIStructureWithWorkOrd
      * Mining icon
      */
     private final static VisibleCitizenStatus MINING =
-      new VisibleCitizenStatus(new ResourceLocation(Constants.MOD_ID, "textures/icons/work/miner.png"), "com.minecolonies.gui.visiblestatus.miner");
+      new VisibleCitizenStatus(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "textures/icons/work/miner.png"), "com.minecolonies.gui.visiblestatus.miner");
 
     //The current block to mine
     @Nullable
@@ -244,11 +244,11 @@ public class EntityAIStructureMiner extends AbstractEntityAIStructureWithWorkOrd
             {
                 renderData.append(RENDER_META_STONE);
             }
-            else if (stack.canPerformAction(ItemAbilities.PICKAXE_DIG) && renderData.indexOf(RENDER_META_PICKAXE) == -1)
+            else if (stack.is(ItemTags.PICKAXES) && renderData.indexOf(RENDER_META_PICKAXE) == -1)
             {
                 renderData.append(RENDER_META_PICKAXE);
             }
-            else if (stack.canPerformAction(ItemAbilities.SHOVEL_DIG) && renderData.indexOf(RENDER_META_SHOVEL) == -1)
+            else if (stack.is(ItemTags.SHOVELS) && renderData.indexOf(RENDER_META_SHOVEL) == -1)
             {
                 renderData.append(RENDER_META_SHOVEL);
             }
@@ -415,7 +415,7 @@ public class EntityAIStructureMiner extends AbstractEntityAIStructureWithWorkOrd
     {
         final BuildingMiner buildingMiner = building;
         // Check if we reached the bottom of the shaft
-        if (getLastLadder(buildingMiner.getLadderLocation(), world) < world.getMinBuildHeight() + SHAFT_BASE_DEPTH)
+        if (getLastLadder(buildingMiner.getLadderLocation(), world) < world.getMinY() + SHAFT_BASE_DEPTH)
         {
             AdvancementUtils.TriggerAdvancementPlayersForColony(job.getColony(), AdvancementTriggers.DEEP_MINE.get()::trigger);
         }

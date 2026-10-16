@@ -1,5 +1,7 @@
 package com.minecolonies.core.items;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 import com.minecolonies.api.blocks.ModBlocks;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
@@ -55,7 +57,7 @@ public class ItemColonySign extends BlockItem
         {
             if (state.getBlock() == ModBlocks.blockHutGateHouse && entity instanceof TileEntityColonyBuilding buildingEntity)
             {
-                if (!ctx.getLevel().isClientSide)
+                if (!ctx.getLevel().isClientSide())
                 {
                     if (buildingEntity.getColony() == null)
                     {
@@ -105,7 +107,7 @@ public class ItemColonySign extends BlockItem
             }
             else if (entity instanceof TileEntityColonySign signEntity)
             {
-                if (!ctx.getLevel().isClientSide)
+                if (!ctx.getLevel().isClientSide())
                 {
                     final IColony colony = IColonyManager.getInstance().getColonyByDimension(signEntity.getColonyId(), ctx.getLevel().dimension());
                     if (colony == null)
@@ -164,14 +166,14 @@ public class ItemColonySign extends BlockItem
         final ColonyId colonyComponent = ColonyId.readFromItemStack(ctx.getItemInHand());
         if (!colonyComponent.hasColonyId())
         {
-            if (ctx.getLevel().isClientSide)
+            if (ctx.getLevel().isClientSide())
             {
                 MessageUtils.format(COM_MINECOLONIES_NEED_COLONY).sendTo(ctx.getPlayer());
             }
             return false;
         }
 
-        if (!ctx.getLevel().isClientSide)
+        if (!ctx.getLevel().isClientSide())
         {
             final int colonyId = colonyComponent.id();
             final IColony colony = IColonyManager.getInstance().getColonyByDimension(colonyId, ctx.getLevel().dimension());
@@ -196,20 +198,24 @@ public class ItemColonySign extends BlockItem
     }
 
     @Override
-    public void appendHoverText(@NotNull final ItemStack stack, @Nullable final TooltipContext tooltipContext, @NotNull final List<Component> tooltip, @NotNull final TooltipFlag flagIn)
+    public void appendHoverText(@NotNull final ItemStack stack,
+      @Nullable final TooltipContext tooltipContext,
+      @NotNull final TooltipDisplay display,
+      @NotNull final Consumer<Component> tooltip,
+      @NotNull final TooltipFlag flagIn)
     {
         final ColonyId colonyComponent = ColonyId.readFromItemStack(stack);
         if (colonyComponent.hasColonyId())
         {
             final MutableComponent colonyHint = Component.translatable(TranslationConstants.COM_MINECOLONIES_CORE_COLONY_SIGN_TOOLTIP_COLONY, colonyComponent.id());
             colonyHint.setStyle(Style.EMPTY.withColor(ChatFormatting.DARK_BLUE));
-            tooltip.add(colonyHint);
+            tooltip.accept(colonyHint);
         }
 
         final MutableComponent guiHint = Component.translatable(TranslationConstants.COM_MINECOLONIES_CORE_COLONY_SIGN_TOOLTIP);
         guiHint.setStyle(Style.EMPTY.withColor(ChatFormatting.DARK_GREEN));
-        tooltip.add(guiHint);
+        tooltip.accept(guiHint);
 
-        super.appendHoverText(stack, tooltipContext, tooltip, flagIn);
+        super.appendHoverText(stack, tooltipContext, display, tooltip, flagIn);
     }
 }

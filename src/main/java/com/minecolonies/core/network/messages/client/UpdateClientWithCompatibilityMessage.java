@@ -6,8 +6,6 @@ import com.minecolonies.api.IMinecoloniesAPI;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.constant.Constants;
 import io.netty.buffer.Unpooled;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -50,10 +48,9 @@ public class UpdateClientWithCompatibilityMessage extends AbstractClientPlayMess
     @Override
     protected void onExecute(final IPayloadContext ctxIn, final Player player)
     {
-        final ClientLevel world = Minecraft.getInstance().level;
         try
         {
-            IMinecoloniesAPI.getInstance().getColonyManager().getCompatibilityManager().deserialize(this.buffer, world);
+            IMinecoloniesAPI.getInstance().getColonyManager().getCompatibilityManager().deserialize(this.buffer, player.level());
         }
         catch (Exception e)
         {

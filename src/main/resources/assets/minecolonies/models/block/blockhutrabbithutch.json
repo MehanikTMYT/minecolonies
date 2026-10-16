@@ -10,7 +10,7 @@
 		"first": {
       "render_type": "solid",
 			"textures": {
-				"14": "entity/chest/normal",
+				"14": "minecolonies:block/decor/entity/chest/normal",
 				"15": "block/cauldron_side",
 				"16": "block/oak_planks",
 				"17": "minecolonies:block/liquid/liq1",
@@ -522,7 +522,7 @@
 		"second": {
       "render_type": "cutout",
 			"textures": {
-				"5": "item/carrot"
+				"5": "minecolonies:block/decor/item/carrot"
 			},
 			"elements": [
 				{

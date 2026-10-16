@@ -31,7 +31,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.network.protocol.game.ClientboundAnimatePacket;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
@@ -45,7 +45,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.entity.BannerPatternLayers;
@@ -70,7 +69,7 @@ public class MeleeCombatAI extends AttackMoveAI<EntityCitizen>
      * Combat icon
      */
     private final static VisibleCitizenStatus KNIGHT_COMBAT =
-      new VisibleCitizenStatus(new ResourceLocation(Constants.MOD_ID, "textures/icons/work/knight_combat.png"), "com.minecolonies.gui.visiblestatus.knight_combat");
+      new VisibleCitizenStatus(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "textures/icons/work/knight_combat.png"), "com.minecolonies.gui.visiblestatus.knight_combat");
 
     /**
      * Knockback chance
@@ -320,7 +319,7 @@ public class MeleeCombatAI extends AttackMoveAI<EntityCitizen>
 
         if (ItemStackUtils.doesItemServeAsWeapon(heldItem))
         {
-            if (heldItem.getItem() instanceof SwordItem)
+            if (ItemStackUtils.isSword(heldItem))
             {
                 addDmg += user.getAttribute(Attributes.ATTACK_DAMAGE).getValue();
             }
@@ -350,7 +349,7 @@ public class MeleeCombatAI extends AttackMoveAI<EntityCitizen>
         if (ColonyConstants.rand.nextDouble() > 1 / (1 + user.getCitizenColonyHandler().getColonyOrRegister().getResearchManager().getResearchEffects().getEffectStrength(GUARD_CRIT)))
         {
             addDmg *= 1.5;
-            ((ServerLevel) user.level()).getChunkSource().broadcastAndSend(user, new ClientboundAnimatePacket(target, 4));
+            ((ServerLevel) user.level()).getChunkSource().sendToTrackingPlayersAndSelf(user, new ClientboundAnimatePacket(target, 4));
         }
 
         return addDmg * MineColonies.getConfig().getServer().guardDamageMultiplier.get();

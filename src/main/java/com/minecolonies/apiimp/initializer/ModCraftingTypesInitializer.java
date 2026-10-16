@@ -2,6 +2,7 @@ package com.minecolonies.apiimp.initializer;
 
 import com.minecolonies.api.crafting.ModCraftingTypes;
 import com.minecolonies.api.crafting.RecipeCraftingType;
+import com.minecolonies.api.crafting.VanillaRecipeUtils;
 import com.minecolonies.api.crafting.registry.CraftingType;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.apiimp.CommonMinecoloniesAPIImpl;
@@ -23,11 +24,10 @@ public final class ModCraftingTypesInitializer
     static
     {
             ModCraftingTypes.SMALL_CRAFTING = DEFERRED_REGISTER.register(ModCraftingTypes.SMALL_CRAFTING_ID.getPath(), () -> new RecipeCraftingType<>(ModCraftingTypes.SMALL_CRAFTING_ID,
-              RecipeType.CRAFTING, r -> r.value().canCraftInDimensions(2, 2)));
+              RecipeType.CRAFTING, r -> VanillaRecipeUtils.getIngredients(r.value()).size() <= 4));
 
             ModCraftingTypes.LARGE_CRAFTING = DEFERRED_REGISTER.register(ModCraftingTypes.LARGE_CRAFTING_ID.getPath(), () -> new RecipeCraftingType<>(ModCraftingTypes.LARGE_CRAFTING_ID,
-              RecipeType.CRAFTING, r -> r.value().canCraftInDimensions(3, 3)
-                                          && !r.value().canCraftInDimensions(2, 2)));
+              RecipeType.CRAFTING, r -> VanillaRecipeUtils.getIngredients(r.value()).size() > 4));
 
             ModCraftingTypes.SMELTING = DEFERRED_REGISTER.register(ModCraftingTypes.SMELTING_ID.getPath(), () -> new RecipeCraftingType<>(ModCraftingTypes.SMELTING_ID,
               RecipeType.SMELTING, null));

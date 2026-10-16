@@ -67,8 +67,8 @@ public final class ColonyUtils
         final Consumer<String> errorHandler)
     {
         final CompletableFuture<Blueprint> future =
-            CompletableFuture.supplyAsync(() -> StructurePacks.getBlueprint(structurePack, structurePath, FMLEnvironment.production, world.registryAccess()), IOPool.getExecutor());
-        if (world.isClientSide)
+            CompletableFuture.supplyAsync(() -> StructurePacks.getBlueprint(structurePack, structurePath, FMLEnvironment.isProduction(), world.registryAccess()), IOPool.getExecutor());
+        if (world.isClientSide())
         {
             ClientFutureProcessor.queueBlueprint(new ClientFutureProcessor.BlueprintProcessingData(future,
                 (blueprint ->
@@ -188,6 +188,6 @@ public final class ColonyUtils
     public static ChunkCapData getChunkCapData(final ChunkAccess chunk)
     {
         final IChunkClaimData cap = IColonyManager.getInstance().getClaimData(chunk.getLevel().dimension(), chunk.getPos());
-        return cap == null ? new ChunkCapData(chunk.getPos().x, chunk.getPos().z) : new ChunkCapData(chunk.getPos().x, chunk.getPos().z, cap.getOwningColony(), cap.getStaticClaimColonies(), cap.getAllClaimingBuildings());
+        return cap == null ? new ChunkCapData(chunk.getPos().x(), chunk.getPos().z()) : new ChunkCapData(chunk.getPos().x(), chunk.getPos().z(), cap.getOwningColony(), cap.getStaticClaimColonies(), cap.getAllClaimingBuildings());
     }
 }

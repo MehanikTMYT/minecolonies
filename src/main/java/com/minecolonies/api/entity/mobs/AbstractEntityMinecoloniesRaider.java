@@ -1,5 +1,8 @@
 package com.minecolonies.api.entity.mobs;
 
+import com.minecolonies.api.util.ValueIOUtils;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
 import com.minecolonies.api.MinecoloniesAPIProxy;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
@@ -15,6 +18,7 @@ import com.minecolonies.core.entity.pathfinding.navigation.AbstractAdvancedPathN
 import com.minecolonies.core.entity.pathfinding.navigation.PathingStuckHandler;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -26,7 +30,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.level.portal.DimensionTransition;
+import net.minecraft.world.level.portal.TeleportTransition;
 import net.neoforged.neoforge.common.util.FakePlayer;
 import org.jetbrains.annotations.NotNull;
 
@@ -218,32 +222,32 @@ public abstract class AbstractEntityMinecoloniesRaider extends AbstractEntityMin
     }
 
     @Override
-    public void addAdditionalSaveData(final CompoundTag compound)
+    protected void addAdditionalSaveDataTag(final CompoundTag compound)
     {
+        super.addAdditionalSaveDataTag(compound);
         compound.putLong(TAG_TIME, worldTimeAtSpawn);
         compound.putInt(TAG_COLONY_ID, this.colony == null ? 0 : colony.getID());
         compound.putInt(TAG_EVENT_ID, eventID);
-        super.addAdditionalSaveData(compound);
     }
 
     /**
      * Prevent raiders from travelling to other dimensions through portals.
      */
-    @Nullable
     @Override
-    public Entity changeDimension(final DimensionTransition dimensionTransition)
+    public boolean canUsePortal(final boolean ignorePassenger)
     {
-        return null;
+        return false;
     }
 
     @Override
-    public void readAdditionalSaveData(final CompoundTag compound)
+    protected void readAdditionalSaveDataTag(final CompoundTag compound)
     {
-        worldTimeAtSpawn = compound.getLong(TAG_TIME);
-        eventID = compound.getInt(TAG_EVENT_ID);
+        super.readAdditionalSaveDataTag(compound);
+        worldTimeAtSpawn = compound.getLongOr(TAG_TIME, 0L);
+        eventID = compound.getIntOr(TAG_EVENT_ID, 0);
         if (compound.contains(TAG_COLONY_ID))
         {
-            final int colonyId = compound.getInt(TAG_COLONY_ID);
+            final int colonyId = compound.getIntOr(TAG_COLONY_ID, 0);
             if (colonyId != 0)
             {
                 setColony(IColonyManager.getInstance().getColonyByWorld(colonyId, level()));
@@ -255,7 +259,6 @@ public abstract class AbstractEntityMinecoloniesRaider extends AbstractEntityMin
             this.remove(RemovalReason.DISCARDED);
         }
 
-        super.readAdditionalSaveData(compound);
     }
 
     @Override
@@ -287,7 +290,7 @@ public abstract class AbstractEntityMinecoloniesRaider extends AbstractEntityMin
             envDmgCooldown--;
         }
 
-        if (level().isClientSide)
+        if (level().isClientSide())
         {
             super.aiStep();
             return;
@@ -330,9 +333,9 @@ public abstract class AbstractEntityMinecoloniesRaider extends AbstractEntityMin
                 {
                     for (AbstractEntityMinecoloniesRaider entity : RaiderMobUtils.getBarbariansCloseToEntity(this, SPEED_EFFECT_DISTANCE))
                     {
-                        if (!entity.hasEffect(MobEffects.MOVEMENT_SPEED))
+                        if (!entity.hasEffect(MobEffects.SPEED))
                         {
-                            entity.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, SPEED_EFFECT_DURATION, SPEED_EFFECT_MULTIPLIER));
+                            entity.addEffect(new MobEffectInstance(MobEffects.SPEED, SPEED_EFFECT_DURATION, SPEED_EFFECT_MULTIPLIER));
                         }
                     }
                 }
@@ -351,7 +354,7 @@ public abstract class AbstractEntityMinecoloniesRaider extends AbstractEntityMin
      */
     private void onEnterChunk(final ChunkPos newChunkPos)
     {
-        final LevelChunk chunk = colony.getWorld().getChunk(newChunkPos.x, newChunkPos.z);
+        final LevelChunk chunk = colony.getWorld().getChunk(newChunkPos.x(), newChunkPos.z());
         final int owningColonyId = ColonyUtils.getOwningColony(chunk);
         if (owningColonyId != NO_COLONY_ID && colony.getID() != owningColonyId)
         {
@@ -366,7 +369,7 @@ public abstract class AbstractEntityMinecoloniesRaider extends AbstractEntityMin
     public SpawnGroupData finalizeSpawn(
       final ServerLevelAccessor worldIn,
       final DifficultyInstance difficultyIn,
-      final MobSpawnType reason,
+      final EntitySpawnReason reason,
       @Nullable final SpawnGroupData spawnDataIn)
     {
         RaiderMobUtils.setEquipment(this);
@@ -376,7 +379,7 @@ public abstract class AbstractEntityMinecoloniesRaider extends AbstractEntityMin
     @Override
     public void remove(@NotNull final RemovalReason reason)
     {
-        if (!level().isClientSide && colony != null && eventID > 0)
+        if (!level().isClientSide() && colony != null && eventID > 0)
         {
             colony.getEventManager().unregisterEntity(this, eventID);
         }
@@ -412,14 +415,14 @@ public abstract class AbstractEntityMinecoloniesRaider extends AbstractEntityMin
     public void die(@NotNull final DamageSource cause)
     {
         super.die(cause);
-        if (!level().isClientSide && getColony() != null)
+        if (!level().isClientSide() && getColony() != null)
         {
             getColony().getEventManager().onEntityDeath(this, eventID);
         }
     }
 
     @Override
-    public boolean hurt(@NotNull final DamageSource damageSource, final float damage)
+    public boolean hurtServer(@NotNull final ServerLevel level, @NotNull final DamageSource damageSource, final float damage)
     {
         if (!(damageSource.getEntity() instanceof LivingEntity) || damageSource.getEntity() instanceof FakePlayer)
         {
@@ -457,21 +460,21 @@ public abstract class AbstractEntityMinecoloniesRaider extends AbstractEntityMin
             {
                 if (damage > MIN_THORNS_DAMAGE && random.nextInt(THORNS_CHANCE) == 0)
                 {
-                    source.hurt(level().damageSources().thorns(this), damage * 0.5f);
+                    source.hurtServer(level, level.damageSources().thorns(this), damage * 0.5f);
                 }
 
                 final float raiderDamageEnchantLevel =
-                    player.getMainHandItem().getEnchantmentLevel(player.level().registryAccess().registry(Registries.ENCHANTMENT).get().getHolder(ModEnchants.raiderDamage).get());
+                    player.getMainHandItem().getEnchantmentLevel(player.level().registryAccess().lookup(Registries.ENCHANTMENT).get().get(ModEnchants.raiderDamage).get());
 
                 // Up to 7 damage are converted to health scaling damage, 7 is the damage of a diamond sword
                 float baseScalingDamage = Math.min(damage, MAX_SCALED_DAMAGE);
                 float totalWithScaled =
                     Math.max(damage, (damage - baseScalingDamage) + baseScalingDamage * HP_PERCENT_PER_DMG * this.getMaxHealth() * (1 + (raiderDamageEnchantLevel / 5)));
-                return super.hurt(damageSource, totalWithScaled);
+                return super.hurtServer(level, damageSource, totalWithScaled);
             }
         }
 
-        return super.hurt(damageSource, damage);
+        return super.hurtServer(level, damageSource, damage);
     }
 
     /**

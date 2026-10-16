@@ -1,5 +1,8 @@
 package com.minecolonies.core.datalistener;
 
+import net.minecraft.core.HolderLookup;
+import net.minecraft.util.ExtraCodecs;
+import net.minecraft.resources.FileToIdConverter;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -22,7 +25,7 @@ import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.network.chat.Component;
 
 import java.util.Map;
@@ -32,7 +35,7 @@ import java.util.UUID;
 /**
  * Loads and listens to custom visitor data added
  */
-public class CustomVisitorListener extends SimpleJsonResourceReloadListener
+public class CustomVisitorListener extends SimpleJsonResourceReloadListener<JsonElement>
 {
     /**
      * Gson instance
@@ -57,7 +60,22 @@ public class CustomVisitorListener extends SimpleJsonResourceReloadListener
     /**
      * List of custom visitor data
      */
-    public static ImmutableList<CustomVisitorData> visitorDataPack = ImmutableList.of();
+    public static volatile ImmutableList<CustomVisitorData> visitorDataPack = ImmutableList.of();
+
+    /**
+     * Parsed visitor definitions awaiting item component binding.
+     */
+    private static volatile ImmutableList<CustomVisitorData> pendingVisitorDataPack = ImmutableList.of();
+
+    /**
+     * Registry lookup captured from the current resource reload.
+     */
+    private static volatile HolderLookup.Provider pendingRegistryLookup;
+
+    /**
+     * Whether default item components have already been bound.
+     */
+    private static volatile boolean dataComponentsBound;
 
     /**
      * Random
@@ -66,17 +84,34 @@ public class CustomVisitorListener extends SimpleJsonResourceReloadListener
 
     public CustomVisitorListener()
     {
-        super(GSON, "visitors");
+        super(ExtraCodecs.JSON, FileToIdConverter.json("visitors"));
     }
 
     @Override
     protected void apply(
-      final Map<ResourceLocation, JsonElement> jsonElementMap, final ResourceManager resourceManager, final ProfilerFiller profiler)
+      final Map<Identifier, JsonElement> jsonElementMap, final ResourceManager resourceManager, final ProfilerFiller profiler)
     {
-        visitorDataPack = ImmutableList.of();
-        for (final Map.Entry<ResourceLocation, JsonElement> entry : jsonElementMap.entrySet())
+        final ImmutableList.Builder<CustomVisitorData> parsedVisitors = ImmutableList.builder();
+
+        for (final Map.Entry<Identifier, JsonElement> entry : jsonElementMap.entrySet())
         {
-            tryParse(entry);
+            final CustomVisitorData parsedVisitor = tryParse(entry);
+            if (parsedVisitor != null)
+            {
+                parsedVisitors.add(parsedVisitor);
+            }
+        }
+
+        pendingRegistryLookup = getRegistryLookup();
+        pendingVisitorDataPack = parsedVisitors.build();
+
+        if (dataComponentsBound)
+        {
+            bindPendingVisitors();
+        }
+        else
+        {
+            visitorDataPack = ImmutableList.of();
         }
     }
 
@@ -85,7 +120,7 @@ public class CustomVisitorListener extends SimpleJsonResourceReloadListener
      *
      * @param entry
      */
-    private void tryParse(final Map.Entry<ResourceLocation, JsonElement> entry)
+    private CustomVisitorData tryParse(final Map.Entry<Identifier, JsonElement> entry)
     {
         try
         {
@@ -119,15 +154,12 @@ public class CustomVisitorListener extends SimpleJsonResourceReloadListener
 
             if (data.has(VISITOR_RECRUITCOST))
             {
-                dataEntry.recruitCost = ItemStackUtils.idToItemStack(data.get(VISITOR_RECRUITCOST).getAsString(), getRegistryLookup());
+                dataEntry.recruitCostDefinition = data.get(VISITOR_RECRUITCOST).getAsString();
             }
 
-            if (data.has(VISITOR_RECRUITCOSTCOUNT))
+            if (data.has(VISITOR_RECRUITCOSTCOUNT) && dataEntry.recruitCostDefinition != null)
             {
-                if (dataEntry.recruitCost != null)
-                {
-                    dataEntry.recruitCost.setCount(data.get(VISITOR_RECRUITCOSTCOUNT).getAsInt());
-                }
+                dataEntry.recruitCostCount = data.get(VISITOR_RECRUITCOSTCOUNT).getAsInt();
             }
 
             if (data.has(VISITOR_VOICE_PROFILE))
@@ -151,16 +183,42 @@ public class CustomVisitorListener extends SimpleJsonResourceReloadListener
                 if (!(dataEntry.gender.equals("m") || dataEntry.gender.equals("f")))
                 {
                     Log.getLogger().warn("Could not parse visitor gender(m/f) for:" + entry.getKey());
-                    return;
+                    return null;
                 }
             }
 
-            visitorDataPack = ImmutableList.<CustomVisitorData>builder().addAll(visitorDataPack).add(dataEntry).build();
+            return dataEntry;
         }
         catch (Exception e)
         {
             Log.getLogger().warn("Could not parse visitor for:" + entry.getKey(), e);
+            return null;
         }
+    }
+
+    /**
+     * Materializes custom visitor recruitment costs after default item
+     * components have been bound.
+     */
+    public static synchronized void bindPendingVisitors()
+    {
+        dataComponentsBound = true;
+
+        final HolderLookup.Provider registryLookup = pendingRegistryLookup;
+        if (registryLookup == null)
+        {
+            visitorDataPack = ImmutableList.of();
+            return;
+        }
+
+        final ImmutableList.Builder<CustomVisitorData> boundVisitors = ImmutableList.builder();
+        for (final CustomVisitorData visitorData : pendingVisitorDataPack)
+        {
+            visitorData.bindRecruitCost(registryLookup);
+            boundVisitors.add(visitorData);
+        }
+
+        visitorDataPack = boundVisitors.build();
     }
 
     /**
@@ -199,6 +257,16 @@ public class CustomVisitorListener extends SimpleJsonResourceReloadListener
         private ItemStack recruitCost;
 
         /**
+         * Raw item definition retained until default components are bound.
+         */
+        private String recruitCostDefinition;
+
+        /**
+         * Recruitment cost stack size.
+         */
+        private int recruitCostCount = 1;
+
+        /**
          * Gender setting
          */
         private String gender = null;
@@ -213,6 +281,26 @@ public class CustomVisitorListener extends SimpleJsonResourceReloadListener
          */
         private String primarySkill = null;
         private String secondarySkill = null;
+
+        /**
+         * Materializes this visitor's recruitment cost.
+         *
+         * @param registryLookup registry access for component decoding
+         */
+        private void bindRecruitCost(final HolderLookup.Provider registryLookup)
+        {
+            if (recruitCostDefinition == null)
+            {
+                recruitCost = null;
+                return;
+            }
+
+            recruitCost = ItemStackUtils.idToItemStack(recruitCostDefinition, registryLookup);
+            if (!ItemStackUtils.isEmpty(recruitCost))
+            {
+                recruitCost.setCount(recruitCostCount);
+            }
+        }
 
         /**
          * Modifies the given visitor data
@@ -242,9 +330,9 @@ public class CustomVisitorListener extends SimpleJsonResourceReloadListener
                 visitorData.setSuffix(citizenSuffix);
             }
 
-            if (recruitCost != null)
+            if (!ItemStackUtils.isEmpty(recruitCost))
             {
-                visitorData.setRecruitCosts(recruitCost);
+                visitorData.setRecruitCosts(recruitCost.copy());
             }
 
             if (storykey != null)

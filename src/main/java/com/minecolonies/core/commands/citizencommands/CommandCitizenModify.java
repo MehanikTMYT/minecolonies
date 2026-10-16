@@ -1,5 +1,6 @@
 package com.minecolonies.core.commands.citizencommands;
 
+import net.minecraft.server.permissions.Permissions;
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.util.Log;
@@ -100,7 +101,7 @@ public class CommandCitizenModify implements IMCColonyOfficerCommand
                 return 0;
             }
 
-            if (!context.getSource().hasPermission(OP_PERM_LEVEL) && !MineColonies.getConfig().getServer().canPlayerUseModifyCitizensCommand.get())
+            if (!context.getSource().permissions().hasPermission(Permissions.COMMANDS_OWNER) && !MineColonies.getConfig().getServer().canPlayerUseModifyCitizensCommand.get())
             {
                 context.getSource().sendSuccess(() -> Component.translatable(CommandTranslationConstants.COMMAND_DISABLED_IN_CONFIG), true);
                 return 0;

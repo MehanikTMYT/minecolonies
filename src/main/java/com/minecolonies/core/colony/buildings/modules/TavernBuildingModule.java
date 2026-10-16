@@ -9,12 +9,15 @@ import com.minecolonies.api.colony.IVisitorData;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.colony.buildings.ModBuildings;
 import com.minecolonies.api.colony.buildings.modules.*;
+import com.minecolonies.api.colony.buildings.modules.settings.ISettingKey;
 import com.minecolonies.api.colony.buildings.modules.stat.IStat;
 import com.minecolonies.api.colony.interactionhandling.ChatPriority;
 import com.minecolonies.api.sounds.TavernSounds;
 import com.minecolonies.api.util.MathUtils;
 import com.minecolonies.api.util.StatsUtil;
 import com.minecolonies.core.client.gui.huts.WindowHutLiving;
+import com.minecolonies.core.colony.buildings.modules.settings.BoolSetting;
+import com.minecolonies.core.colony.buildings.modules.settings.SettingKey;
 import com.minecolonies.core.colony.buildings.views.LivingBuildingView;
 import com.minecolonies.core.colony.interactionhandling.RecruitmentInteraction;
 import com.minecolonies.core.datalistener.CustomVisitorListener;
@@ -29,6 +32,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -48,6 +53,9 @@ import static com.minecolonies.api.util.constant.StatisticsConstants.NEW_VISITOR
  */
 public class TavernBuildingModule extends AbstractBuildingModule implements IDefinesCoreBuildingStatsModule, IBuildingEventsModule, IPersistentModule, ITickingModule
 {
+    public static final ISettingKey<BoolSetting>       PLAYMUSIC      =
+      new SettingKey<>(BoolSetting.class, Identifier.fromNamespaceAndPath(com.minecolonies.api.util.constant.Constants.MOD_ID, "playmusic"));
+
     /**
      * Schematic name
      */
@@ -100,7 +108,9 @@ public class TavernBuildingModule extends AbstractBuildingModule implements IDef
     @Override
     public void onPlayerEnterBuilding(final Player player)
     {
-        if (musicCooldown <= 0 && building.getBuildingLevel() > 0 && !building.getColony().isDay())
+        boolean musicToggle = building.getSettingValueOrDefault(PLAYMUSIC, true);
+
+        if (musicToggle && musicCooldown <= 0 && building.getBuildingLevel() > 0 && !building.getColony().isDay())
         {
             int count = 0;
             BlockPos avg = BlockPos.ZERO;
@@ -124,7 +134,10 @@ public class TavernBuildingModule extends AbstractBuildingModule implements IDef
 
             avg = new BlockPos(avg.getX() / count, avg.getY() / count, avg.getZ() / count);
             final PlayMusicAtPosMessage message = new PlayMusicAtPosMessage(TavernSounds.tavernTheme, avg, building.getColony().getWorld(), 0.7f, 1.0f);
-            message.sendToPlayer(building.getColony().getPackageManager().getCloseSubscribers());
+            for (final ServerPlayer curPlayer : building.getColony().getPackageManager().getCloseSubscribers())
+            {
+                message.sendToPlayer(curPlayer);
+            }
             musicCooldown = TWENTY_MINUTES;
         }
     }
@@ -170,7 +183,7 @@ public class TavernBuildingModule extends AbstractBuildingModule implements IDef
         if (visitorData != null && !CustomVisitorListener.chanceCustomVisitors(visitorData))
         {
             visitorData.triggerInteraction(new RecruitmentInteraction(Component.translatable(
-                "com.minecolonies.coremod.gui.chat.recruitstory" + (building.getColony().getWorld().random.nextInt(MAX_STORY) + 1), visitorData.getName().split(" ")[0]),
+                "com.minecolonies.coremod.gui.chat.recruitstory" + (building.getColony().getWorld().getRandom().nextInt(MAX_STORY) + 1), visitorData.getName().split(" ")[0]),
                 ChatPriority.IMPORTANT));
         }
     }
@@ -246,10 +259,10 @@ public class TavernBuildingModule extends AbstractBuildingModule implements IDef
     @Override
     public void deserializeNBT(@NotNull final HolderLookup.Provider provider, final CompoundTag nbt)
     {
-        final ListTag visitorlist = nbt.getList(TAG_VISITORS, TAG_COMPOUND);
+        final ListTag visitorlist = nbt.getListOrEmpty(TAG_VISITORS);
         for (final Tag data : visitorlist)
         {
-            final int id = ((CompoundTag) data).getInt(TAG_VISITOR_ID);
+            final int id = ((CompoundTag) data).getIntOr(TAG_VISITOR_ID, 0);
             final ICitizenData citizenData = building.getColony().getVisitorManager().getCivilian(id);
             if (citizenData != null)
             {
@@ -257,7 +270,7 @@ public class TavernBuildingModule extends AbstractBuildingModule implements IDef
                 citizenData.setHomeBuilding(building);
             }
         }
-        noVisitorTime = nbt.getInt(TAG_NOVISITTIME);
+        noVisitorTime = nbt.getIntOr(TAG_NOVISITTIME, 0);
     }
 
     /**
@@ -285,7 +298,7 @@ public class TavernBuildingModule extends AbstractBuildingModule implements IDef
 
         if (!positions.isEmpty())
         {
-            return positions.get(building.getColony().getWorld().random.nextInt(positions.size()));
+            return positions.get(building.getColony().getWorld().getRandom().nextInt(positions.size()));
         }
 
         return null;
@@ -319,7 +332,7 @@ public class TavernBuildingModule extends AbstractBuildingModule implements IDef
     {
         if (!getWorkPositions().isEmpty())
         {
-            return workPositions.get(building.getColony().getWorld().random.nextInt(workPositions.size()));
+            return workPositions.get(building.getColony().getWorld().getRandom().nextInt(workPositions.size()));
         }
         return null;
     }

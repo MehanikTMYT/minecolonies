@@ -1,16 +1,15 @@
 package com.minecolonies.core.entity.other;
 
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.Arrow;
+import net.minecraft.world.entity.projectile.arrow.Arrow;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Predicate;
@@ -45,6 +44,9 @@ public class CustomArrowEntity extends Arrow
      */
     private Predicate<EntityHitResult> onHitCallback = null;
 
+    private double configuredBaseDamage = 2.0;
+    private byte researchPierceLevel;
+
     public CustomArrowEntity(final EntityType<? extends Arrow> type, final Level world)
     {
         super(type, world);
@@ -75,13 +77,13 @@ public class CustomArrowEntity extends Arrow
     @Override
     protected void onHitEntity(EntityHitResult traceResult)
     {
-        final double prevDamage = getBaseDamage();
+        final double prevDamage = configuredBaseDamage;
 
         // Reduce damage by motion before vanilla increases it by the same factor, so our damage stays.
         float f = (float) this.getDeltaMovement().length();
         if (f != 0)
         {
-            setBaseDamage(prevDamage / f);
+            super.setBaseDamage(prevDamage / f);
         }
 
         if (armorPiercePlayer)
@@ -99,15 +101,15 @@ public class CustomArrowEntity extends Arrow
                 {
                     source = level().damageSources().arrow(this, shooter);
                 }
-                player.hurt(source, (float) getBaseDamage());
-                setBaseDamage(0);
+                player.hurt(source, f == 0 ? (float) prevDamage : (float) (prevDamage / f));
+                super.setBaseDamage(0);
             }
         }
 
         super.onHitEntity(traceResult);
 
         // Set the old actual damage value back
-        setBaseDamage(prevDamage);
+        super.setBaseDamage(prevDamage);
         if (onHitCallback != null && onHitCallback.test(traceResult))
         {
             onHitCallback = null;
@@ -132,31 +134,37 @@ public class CustomArrowEntity extends Arrow
         armorPiercePlayer = true;
     }
 
-    @Override
-    public boolean shouldFall()
+    public void setResearchPierceLevel(final byte level)
     {
-        if (this.inGround)
-        {
-            final AABB aabb = (new AABB(this.position(), this.position())).inflate(0.06D);
-            for(VoxelShape voxelshape : this.level().getBlockCollisions(null, aabb)) {
-                if (!voxelshape.isEmpty())
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
+        researchPierceLevel = level;
+    }
+
+    @Override
+    public byte getPierceLevel()
+    {
+        return (byte) Math.max(super.getPierceLevel(), researchPierceLevel);
+    }
+
+    public double getConfiguredBaseDamage()
+    {
+        return configuredBaseDamage;
+    }
+
+    @Override
+    public void setBaseDamage(final double baseDamage)
+    {
+        configuredBaseDamage = baseDamage;
+        super.setBaseDamage(baseDamage);
+    }
+
+    @Override
+    public boolean save(@NotNull final ValueOutput output)
+    {
         return false;
     }
 
     @Override
-    public boolean save(@NotNull CompoundTag nbt)
-    {
-        return false;
-    }
-
-    @Override
-    public void load(@NotNull CompoundTag nbt)
+    public void load(@NotNull final ValueInput input)
     {
         discard();
     }

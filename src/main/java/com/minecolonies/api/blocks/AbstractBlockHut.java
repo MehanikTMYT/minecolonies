@@ -19,15 +19,13 @@ import com.minecolonies.api.util.*;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.api.util.constant.TranslationConstants;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -38,8 +36,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.items.wrapper.InvWrapper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -124,13 +120,12 @@ public abstract class AbstractBlockHut<B extends AbstractBlockHut<B>> extends Ab
     @Override
     public boolean isVisible(@Nullable final CompoundTag beData)
     {
-        final Map<BlockPos, List<String>> data = readTagPosMapFrom(beData.getCompound(TAG_BLUEPRINTDATA));
+        final Map<BlockPos, List<String>> data = readTagPosMapFrom(beData.getCompoundOrEmpty(TAG_BLUEPRINTDATA));
         return !data.getOrDefault(BlockPos.ZERO, new ArrayList<>()).contains("invisible");
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
-    public List<MutableComponent> getRequirements(final ClientLevel level, final BlockPos pos, final LocalPlayer player)
+    public List<MutableComponent> getRequirements(final Level level, final BlockPos pos, final Player player)
     {
         final List<MutableComponent> requirements = new ArrayList<>();
         final IColonyView colonyView = IColonyManager.getInstance().getClosestColonyView(level, pos);
@@ -146,7 +141,7 @@ public abstract class AbstractBlockHut<B extends AbstractBlockHut<B>> extends Ab
             return requirements;
         }
 
-        final ResourceLocation effectId = colonyView.getResearchManager().getResearchEffectIdFrom(this);
+        final Identifier effectId = colonyView.getResearchManager().getResearchEffectIdFrom(this);
         if (colonyView.getResearchManager().getResearchEffects().getEffectStrength(effectId) > 0)
         {
             return requirements;
@@ -162,8 +157,7 @@ public abstract class AbstractBlockHut<B extends AbstractBlockHut<B>> extends Ab
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
-    public boolean areRequirementsMet(final ClientLevel level, final BlockPos pos, final LocalPlayer player)
+    public boolean areRequirementsMet(final Level level, final BlockPos pos, final Player player)
     {
         if (player.isCreative())
         {
@@ -197,7 +191,7 @@ public abstract class AbstractBlockHut<B extends AbstractBlockHut<B>> extends Ab
 
         try
         {
-            return Integer.parseInt(beData.getCompound(TAG_BLUEPRINTDATA).getString(TAG_SCHEMATIC_NAME).replaceAll("[^0-9]", ""));
+            return Integer.parseInt(beData.getCompoundOrEmpty(TAG_BLUEPRINTDATA).getString(TAG_SCHEMATIC_NAME).orElse("").replaceAll("[^0-9]", ""));
         }
         catch (final NumberFormatException exception)
         {
@@ -345,16 +339,6 @@ public abstract class AbstractBlockHut<B extends AbstractBlockHut<B>> extends Ab
     public String getBlueprintName()
     {
         return getBuildingEntry().getRegistryName().getPath();
-    }
-
-    @Override
-    public void appendHoverText(@NotNull final ItemStack stack, @NotNull final Item.TooltipContext context,
-        @NotNull final List<Component> tooltip, @NotNull final TooltipFlag flags)
-    {
-        super.appendHoverText(stack, context, tooltip, flags);
-
-        stack.addToTooltip(ModDataComponents.HUT_COMPONENT, context, tooltip::add, flags);
-        stack.addToTooltip(ModDataComponents.COLONY_ID_COMPONENT, context, tooltip::add, flags);
     }
 
     @Override

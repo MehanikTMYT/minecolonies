@@ -44,10 +44,11 @@ import com.minecolonies.core.entity.mobs.raider.pirates.EntityCaptainPirateRaide
 import com.minecolonies.core.entity.mobs.raider.pirates.EntityPirateRaider;
 import com.minecolonies.core.entity.other.*;
 import net.minecraft.core.Registry;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.core.registries.Registries;
 import com.minecolonies.core.entity.other.cavalry.CavalryHorseEntity;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -60,7 +61,7 @@ import static com.minecolonies.api.util.constant.CitizenConstants.CITIZEN_HEIGHT
 import static com.minecolonies.api.util.constant.CitizenConstants.CITIZEN_WIDTH;
 import static com.minecolonies.api.util.constant.Constants.*;
 
-@EventBusSubscriber(modid = Constants.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = Constants.MOD_ID)
 public class EntityInitializer
 {
     public static void setupEntities(RegisterEvent event)
@@ -365,8 +366,10 @@ public class EntityInitializer
 
     private static <T extends Entity> EntityType<T> build(Registry<EntityType<?>> registry, final String key, final EntityType.Builder<T> builder)
     {
-        EntityType<T> entity = builder.build(Constants.MOD_ID + ":" + key);
-        Registry.register(registry, ResourceLocation.parse(Constants.MOD_ID + ":" + key), entity);
+        final Identifier id = Identifier.fromNamespaceAndPath(Constants.MOD_ID, key);
+        final ResourceKey<EntityType<?>> resourceKey = ResourceKey.create(Registries.ENTITY_TYPE, id);
+        final EntityType<T> entity = builder.build(resourceKey);
+        Registry.register(registry, id, entity);
         return entity;
     }
 

@@ -7,9 +7,7 @@ import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.core.client.gui.modules.building.WindowHutRequestTaskModule;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -24,8 +22,6 @@ public abstract class RequestTaskModuleView extends AbstractBuildingModuleView
     {
 
     }
-
-    @OnlyIn(Dist.CLIENT)
     @Override
     public BOWindow getWindow()
     {
@@ -33,9 +29,9 @@ public abstract class RequestTaskModuleView extends AbstractBuildingModuleView
     }
 
     @Override
-    public ResourceLocation getIconResourceLocation()
+    public Identifier getIconResourceLocation()
     {
-        return new ResourceLocation(Constants.MOD_ID, "textures/gui/modules/info.png");
+        return Identifier.fromNamespaceAndPath(Constants.MOD_ID, "textures/gui/modules/info.png");
     }
 
     @Override

@@ -1,5 +1,8 @@
 package com.minecolonies.api.entity.mobs;
 
+import com.minecolonies.api.util.ValueIOUtils;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
 import com.minecolonies.api.IMinecoloniesAPI;
 import com.minecolonies.api.MinecoloniesAPIProxy;
 import com.minecolonies.api.entity.ai.combat.CombatAIStates;
@@ -26,6 +29,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.level.Level;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.NotNull;
 
@@ -149,7 +153,7 @@ public abstract class AbstractEntityMinecoloniesMonster extends AbstractFastMine
     {
         super.playAmbientSound();
         final SoundEvent soundevent = this.getAmbientSound();
-        if (soundevent != null && level().random.nextInt(OUT_OF_ONE_HUNDRED) <= ONE)
+        if (soundevent != null && level().getRandom().nextInt(OUT_OF_ONE_HUNDRED) <= ONE)
         {
             this.playSound(soundevent, this.getSoundVolume(), this.getVoicePitch());
         }
@@ -254,7 +258,7 @@ public abstract class AbstractEntityMinecoloniesMonster extends AbstractFastMine
             collisionCounter--;
         }
 
-        if (level().isClientSide)
+        if (level().isClientSide())
         {
             super.aiStep();
             return;
@@ -269,7 +273,7 @@ public abstract class AbstractEntityMinecoloniesMonster extends AbstractFastMine
     }
 
     @Override
-    public boolean hurt(@NotNull final DamageSource damageSource, final float damage)
+    public boolean hurtServer(@NotNull final ServerLevel level, @NotNull final DamageSource damageSource, final float damage)
     {
         if (damageSource.getEntity() instanceof AbstractEntityMinecoloniesMonster)
         {
@@ -288,7 +292,7 @@ public abstract class AbstractEntityMinecoloniesMonster extends AbstractFastMine
             threatTable.addThreat(attacker, (int) damage);
         }
 
-        return super.hurt(damageSource, damage);
+        return super.hurtServer(level, damageSource, damage);
     }
 
     /**
@@ -307,23 +311,41 @@ public abstract class AbstractEntityMinecoloniesMonster extends AbstractFastMine
     }
 
     @Override
-    public void addAdditionalSaveData(final CompoundTag compound)
+    protected void addAdditionalSaveData(@NotNull final ValueOutput output)
+    {
+        super.addAdditionalSaveData(output);
+        final CompoundTag saveTag = new CompoundTag();
+        addAdditionalSaveDataTag(saveTag);
+        ValueIOUtils.writeAsTag(output, saveTag);
+    }
+
+    /**
+     * Writes the entity save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void addAdditionalSaveDataTag(final CompoundTag compound)
     {
         if (spawnPos != null)
         {
             compound.putLong(TAG_SPAWN_POS, spawnPos.asLong());
         }
-        super.addAdditionalSaveData(compound);
     }
 
     @Override
-    public void readAdditionalSaveData(final CompoundTag compound)
+    protected void readAdditionalSaveData(@NotNull final ValueInput input)
+    {
+        super.readAdditionalSaveData(input);
+        readAdditionalSaveDataTag(ValueIOUtils.readAsTag(input));
+    }
+
+    /**
+     * Reads the entity save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void readAdditionalSaveDataTag(final CompoundTag compound)
     {
         if (compound.contains(TAG_SPAWN_POS))
         {
-            this.spawnPos = BlockPos.of(compound.getLong(TAG_SPAWN_POS));
+            this.spawnPos = BlockPos.of(compound.getLongOr(TAG_SPAWN_POS, 0L));
         }
-        super.readAdditionalSaveData(compound);
     }
 
     /**
@@ -393,9 +415,4 @@ public abstract class AbstractEntityMinecoloniesMonster extends AbstractFastMine
      *
      * @return
      */
-    @Override
-    protected boolean shouldDespawnInPeaceful()
-    {
-        return true;
-    }
 }

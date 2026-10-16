@@ -3,8 +3,8 @@ package com.minecolonies.core.network.messages.client;
 import com.ldtteam.common.network.AbstractClientPlayMessage;
 import com.ldtteam.common.network.PlayMessageType;
 import com.minecolonies.api.util.constant.Constants;
-import net.minecraft.core.particles.SimpleParticleType;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -32,9 +32,9 @@ public class VanillaParticleMessage extends AbstractClientPlayMessage
     /**
      * Particle id
      */
-    private final SimpleParticleType type;
+    private final ParticleOptions type;
 
-    public VanillaParticleMessage(final double x, final double y, final double z, final SimpleParticleType type)
+    public VanillaParticleMessage(final double x, final double y, final double z, final ParticleOptions type)
     {
         super(TYPE);
         this.x = x;
@@ -49,7 +49,7 @@ public class VanillaParticleMessage extends AbstractClientPlayMessage
         x = byteBuf.readDouble();
         y = byteBuf.readDouble();
         z = byteBuf.readDouble();
-        this.type = (SimpleParticleType) BuiltInRegistries.PARTICLE_TYPE.get(byteBuf.readResourceLocation());
+        this.type = ParticleTypes.STREAM_CODEC.decode(byteBuf);
     }
 
     @Override
@@ -58,7 +58,7 @@ public class VanillaParticleMessage extends AbstractClientPlayMessage
         byteBuf.writeDouble(x);
         byteBuf.writeDouble(y);
         byteBuf.writeDouble(z);
-        byteBuf.writeResourceLocation(BuiltInRegistries.PARTICLE_TYPE.getKey(this.type));
+        ParticleTypes.STREAM_CODEC.encode(byteBuf, this.type);
     }
 
     @Override
@@ -76,7 +76,7 @@ public class VanillaParticleMessage extends AbstractClientPlayMessage
      * @param y            y pos
      * @param z            z pos
      */
-    private void spawnParticles(SimpleParticleType particleType, Level world, double x, double y, double z)
+    private void spawnParticles(ParticleOptions particleType, Level world, double x, double y, double z)
     {
         final Random rand = new Random();
         for (int i = 0; i < 5; ++i)

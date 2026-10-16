@@ -12,7 +12,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import org.jetbrains.annotations.NotNull;
@@ -68,7 +68,7 @@ public class CitizenFoodHandler implements ICitizenFoodHandler
     @Override
     public void addLastEaten(final Item item)
     {
-        lastEatenFoods.add(item);
+        lastEatenFoods.offer(item);
         citizenData.markDirty(TICKS_SECOND);
         dirty = true;
         if (lastEatenFoods.size() >= FOOD_QUEUE_SIZE)
@@ -83,7 +83,12 @@ public class CitizenFoodHandler implements ICitizenFoodHandler
     @Override
     public Item getLastEaten()
     {
-        return lastEatenFoods.peek();
+        Item last = null;
+        for (final Item food : lastEatenFoods)
+        {
+            last = food;
+        }
+        return last;
     }
 
     @Override
@@ -132,10 +137,10 @@ public class CitizenFoodHandler implements ICitizenFoodHandler
     @Override
     public void read(final CompoundTag compound)
     {
-        @NotNull final ListTag lastFoodNbt = compound.getList(TAG_LAST_FOODS, TAG_STRING);
+        @NotNull final ListTag lastFoodNbt = compound.getListOrEmpty(TAG_LAST_FOODS);
         for (int i = 0; i < lastFoodNbt.size(); i++)
         {
-            final Item lastFood = BuiltInRegistries.ITEM.get(ResourceLocation.parse(lastFoodNbt.getString(i)));
+            final Item lastFood = BuiltInRegistries.ITEM.getValue(Identifier.parse(lastFoodNbt.getStringOr(i, "")));
             if (lastFood != Items.AIR)
             {
                 lastEatenFoods.add(lastFood);

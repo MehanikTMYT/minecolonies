@@ -1,5 +1,7 @@
 package com.minecolonies.core.items;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 import com.minecolonies.api.util.constant.TranslationConstants;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.TooltipFlag;
@@ -11,7 +13,6 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.ChatFormatting;
 import net.minecraft.world.level.Level;
-import net.neoforged.neoforge.common.EffectCures;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,7 +27,7 @@ public class ItemMilkyBread extends ItemFood
     /**
      * Setup the food definition
      */
-    private static FoodProperties milkBread = (new FoodProperties.Builder())
+    public static final FoodProperties milkBread = (new FoodProperties.Builder())
                                         .nutrition(5)
                                         .saturationModifier(0.6F)
                                         .build(); 
@@ -38,7 +39,7 @@ public class ItemMilkyBread extends ItemFood
      */
     public ItemMilkyBread(final Properties properties)
     {
-        super((new Item.Properties()).food(milkBread), 1);
+        super(properties.food(milkBread), 1);
     }
 
    /**
@@ -47,21 +48,25 @@ public class ItemMilkyBread extends ItemFood
     @Override
     public ItemStack finishUsingItem(ItemStack stack, Level worldIn, LivingEntity entityLiving) {
         
-        if (!worldIn.isClientSide)
+        if (!worldIn.isClientSide())
         {
-            entityLiving.removeEffectsCuredBy(EffectCures.MILK);
+            entityLiving.removeAllEffects();
         }
 
         return super.finishUsingItem(stack, worldIn, entityLiving);
     }
 
     @Override
-    public void appendHoverText(@NotNull final ItemStack stack, @Nullable final TooltipContext ctx, @NotNull final List<Component> tooltip, @NotNull final TooltipFlag flagIn)
+    public void appendHoverText(@NotNull final ItemStack stack,
+      @Nullable final TooltipContext ctx,
+      @NotNull final TooltipDisplay display,
+      @NotNull final Consumer<Component> tooltip,
+      @NotNull final TooltipFlag flagIn)
     {
         final MutableComponent guiHint = Component.translatableEscape(TranslationConstants.COM_MINECOLONIES_COREMOD_MILKY_BREAD_TOOLTIP_GUI);
         guiHint.setStyle(Style.EMPTY.withColor(ChatFormatting.GRAY));
-        tooltip.add(guiHint);
+        tooltip.accept(guiHint);
 
-        super.appendHoverText(stack, ctx, tooltip, flagIn);
+        super.appendHoverText(stack, ctx, display, tooltip, flagIn);
     }
 }

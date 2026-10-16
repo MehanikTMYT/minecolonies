@@ -1,5 +1,8 @@
 package com.minecolonies.core.tileentities;
 
+import com.minecolonies.api.util.ValueIOUtils;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.tileentities.AbstractTileEntityScarecrow;
@@ -74,19 +77,37 @@ public class TileEntityScarecrow extends AbstractTileEntityScarecrow
     }
 
     @Override
-    public void saveAdditional(final CompoundTag compoundTag, final HolderLookup.Provider provider)
+    protected void saveAdditional(@NotNull final ValueOutput output)
     {
-        super.saveAdditional(compoundTag, provider);
+        super.saveAdditional(output);
+        final CompoundTag saveTag = new CompoundTag();
+        saveAdditionalTag(saveTag, ValueIOUtils.registries(this.level));
+        ValueIOUtils.writeAsTag(output, saveTag);
+    }
+
+    /**
+     * Writes the colony save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void saveAdditionalTag(final CompoundTag compoundTag, @NotNull final HolderLookup.Provider provider)
+    {
         compoundTag.putIntArray(TAG_RADIUS, fieldSize);
     }
 
     @Override
-    public void loadAdditional(final CompoundTag compoundTag, final HolderLookup.Provider provider)
+    protected void loadAdditional(@NotNull final ValueInput input)
     {
-        super.loadAdditional(compoundTag, provider);
+        super.loadAdditional(input);
+        loadAdditionalTag(ValueIOUtils.readAsTag(input), input.lookup());
+    }
+
+    /**
+     * Reads the colony save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void loadAdditionalTag(final CompoundTag compoundTag, @NotNull final HolderLookup.Provider provider)
+    {
         if (compoundTag.contains(TAG_RADIUS))
         {
-            fieldSize = compoundTag.getIntArray(TAG_RADIUS);
+            fieldSize = compoundTag.getIntArray(TAG_RADIUS).orElseGet(() -> new int[0]);
         }
     }
 
@@ -110,7 +131,7 @@ public class TileEntityScarecrow extends AbstractTileEntityScarecrow
     @Override
     public CompoundTag getUpdateTag(@NotNull final HolderLookup.Provider provider)
     {
-        return saveWithId(provider);
+        return saveWithoutMetadata(provider);
     }
 
     /**

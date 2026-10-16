@@ -1,9 +1,11 @@
 package com.minecolonies.api.inventory.container;
 
+import net.minecraft.world.inventory.ContainerInput;
 import com.minecolonies.api.inventory.ModContainers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -13,7 +15,7 @@ import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 
@@ -207,13 +209,13 @@ public class ContainerCrafting extends AbstractContainerMenu
     @Override
     public void slotsChanged(final Container inventoryIn)
     {
-        if (!world.isClientSide)
+        if (!world.isClientSide())
         {
             final ServerPlayer player = (ServerPlayer) inv.player;
-            final List<RecipeHolder<CraftingRecipe>> recipes = player.server.getRecipeManager().getRecipesFor(RecipeType.CRAFTING, craftMatrix.asCraftInput(), world)
-                    .stream().filter(recipe -> recipe.value().isSpecial()
-                            || !world.getGameRules().getBoolean(GameRules.RULE_LIMITED_CRAFTING)
-                            || player.getRecipeBook().contains(recipe)
+            final List<RecipeHolder<CraftingRecipe>> recipes = player.level().recipeAccess().recipeMap().getRecipesFor(RecipeType.CRAFTING, craftMatrix.asCraftInput(), player.level())
+                    .filter(recipe -> recipe.value().isSpecial()
+                            || !player.level().getGameRules().get(GameRules.LIMITED_CRAFTING)
+                            || player.getRecipeBook().contains(recipe.id())
                             || player.isCreative())
                     .toList();
             if (recipes.isEmpty())
@@ -226,7 +228,7 @@ public class ContainerCrafting extends AbstractContainerMenu
                 this.switchableSlot.set(recipes.size());
                 this.recipeIndexSlot.set(this.recipeIndexSlot.get() % recipes.size());
                 final ItemStack stack = recipes.get(this.recipeIndexSlot.get()).value()
-                        .assemble(this.craftMatrix.asCraftInput(), this.world.registryAccess());
+                        .assemble(this.craftMatrix.asCraftInput());
                 this.craftResultSlot.set(stack);
             }
         }
@@ -258,14 +260,14 @@ public class ContainerCrafting extends AbstractContainerMenu
     }
 
     @Override
-    public void clicked(final int slotId, final int clickedButton, final @NotNull ClickType mode, final @NotNull Player playerIn)
+    public void clicked(final int slotId, final int clickedButton, final @NotNull ContainerInput mode, final @NotNull Player playerIn)
     {
         if (slotId >= 1 && slotId < CRAFTING_SLOTS + (complete ? ADDITIONAL_SLOTS : 0))
         {
             // 1 is shift-click
-            if (mode == ClickType.PICKUP
-                  || mode == ClickType.PICKUP_ALL
-                  || mode == ClickType.SWAP)
+            if (mode == ContainerInput.PICKUP
+                  || mode == ContainerInput.PICKUP_ALL
+                  || mode == ContainerInput.SWAP)
             {
                 final Slot slot = this.slots.get(slotId);
                 handleSlotClick(slot, this.getCarried());
@@ -275,7 +277,7 @@ public class ContainerCrafting extends AbstractContainerMenu
             return;
         }
 
-        if (mode == ClickType.QUICK_MOVE)
+        if (mode == ContainerInput.QUICK_MOVE)
         {
             return;
         }
@@ -423,7 +425,9 @@ public class ContainerCrafting extends AbstractContainerMenu
      */
     public List<ItemStack> getRemainingItems()
     {
-        final Optional<RecipeHolder<CraftingRecipe>> iRecipe = this.world.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, craftMatrix.asCraftInput(), world);
+        final Optional<RecipeHolder<CraftingRecipe>> iRecipe = this.world instanceof ServerLevel serverLevel
+                                                               ? serverLevel.recipeAccess().getRecipeFor(RecipeType.CRAFTING, craftMatrix.asCraftInput(), serverLevel)
+                                                               : Optional.empty();
         if (iRecipe.isPresent())
         {
             List<ItemStack> ri = iRecipe.get().value().getRemainingItems(this.craftMatrix.asCraftInput());

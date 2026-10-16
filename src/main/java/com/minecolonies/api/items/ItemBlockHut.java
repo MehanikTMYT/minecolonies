@@ -1,7 +1,16 @@
 package com.minecolonies.api.items;
 
 import com.minecolonies.api.blocks.AbstractBlockHut;
+import com.minecolonies.api.items.component.ModDataComponents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.function.Consumer;
 
 /**
  * A custom item class for hut blocks.
@@ -15,7 +24,7 @@ public class ItemBlockHut extends BlockItem
 
     /**
      * Creates a new ItemBlockHut representing the item form of the given {@link AbstractBlockHut}.
-     * 
+     *
      * @param block   the {@link AbstractBlockHut} this item represents.
      * @param builder the item properties to use.
      */
@@ -23,5 +32,21 @@ public class ItemBlockHut extends BlockItem
     {
         super(block, builder);
         this.block = block;
+    }
+
+    /**
+     * Blocks lost {@code appendHoverText} in 26.1, so the hut tooltip lives on the block item now.
+     */
+    @Override
+    public void appendHoverText(@NotNull final ItemStack stack,
+      @NotNull final Item.TooltipContext context,
+      @NotNull final TooltipDisplay display,
+      @NotNull final Consumer<Component> tooltip,
+      @NotNull final TooltipFlag flags)
+    {
+        super.appendHoverText(stack, context, display, tooltip, flags);
+
+        stack.addToTooltip(ModDataComponents.HUT_COMPONENT, context, display, tooltip, flags);
+        stack.addToTooltip(ModDataComponents.COLONY_ID_COMPONENT, context, display, tooltip, flags);
     }
 }

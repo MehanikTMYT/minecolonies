@@ -2,6 +2,7 @@ package com.minecolonies.api.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import net.neoforged.neoforge.common.util.Lazy;
@@ -12,7 +13,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public class ModKeyMappings
 {
-    private static final String CATEGORY = "key.minecolonies.categories.general";
+    private static final KeyMapping.Category CATEGORY = new KeyMapping.Category(Identifier.fromNamespaceAndPath("minecolonies", "general"));
 
     /**
      * Toggle
@@ -25,6 +26,7 @@ public class ModKeyMappings
      */
     public static void register(@NotNull final RegisterKeyMappingsEvent event)
     {
+        event.registerCategory(CATEGORY);
         event.register(TOGGLE_GOGGLES.get());
     }
 

@@ -1,5 +1,6 @@
 package com.minecolonies.api.items.component;
 
+import net.minecraft.core.component.DataComponentGetter;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.ChatFormatting;
@@ -47,7 +48,10 @@ public record HutBlockData(int level, boolean pastable) implements TooltipProvid
     }
 
     @Override
-    public void addToTooltip(@NotNull final Item.TooltipContext context, @NotNull final Consumer<Component> tooltip, @NotNull final TooltipFlag flags)
+    public void addToTooltip(@NotNull final Item.TooltipContext context,
+      @NotNull final Consumer<Component> tooltip,
+      @NotNull final TooltipFlag flags,
+      @NotNull final DataComponentGetter components)
     {
         final Component level = Component.literal(String.valueOf(this.level)).withStyle(ChatFormatting.GOLD);
         tooltip.accept(Component.translatable("item.minecolonies.hut.level", level).withStyle(ChatFormatting.GREEN));

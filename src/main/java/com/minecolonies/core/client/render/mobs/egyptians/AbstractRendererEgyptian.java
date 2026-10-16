@@ -2,33 +2,52 @@ package com.minecolonies.core.client.render.mobs.egyptians;
 
 import com.minecolonies.api.entity.mobs.AbstractEntityMinecoloniesMonster;
 import com.minecolonies.core.client.render.RenderUtils;
-import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelLayers;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.ArmorModelSet;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.HumanoidMobRenderer;
 import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
-import net.minecraft.client.renderer.entity.layers.ItemInHandLayer;
+import com.minecolonies.core.client.render.mobs.RaiderRenderState;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.HumanoidArm;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Abstract for rendering Pirates.
  */
-public abstract class AbstractRendererEgyptian<T extends AbstractEntityMinecoloniesMonster, M extends HumanoidModel<T>> extends HumanoidMobRenderer<T, M>
+public abstract class AbstractRendererEgyptian<T extends AbstractEntityMinecoloniesMonster, M extends HumanoidModel<RaiderRenderState>> extends HumanoidMobRenderer<T, RaiderRenderState, M>
 {
     public AbstractRendererEgyptian(final EntityRendererProvider.Context context, final M modelBipedIn, final float shadowSize)
     {
         super(context, modelBipedIn, shadowSize);
-        this.addLayer(new ItemInHandLayer<>(this, context.getItemInHandRenderer()));
-        this.addLayer(new HumanoidArmorLayer<>(this, new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)), new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR)), context.getModelManager()));
+        this.addLayer(new HumanoidArmorLayer<>(this,
+          ArmorModelSet.bake(ModelLayers.PLAYER_ARMOR, context.getModelSet(), HumanoidModel::new),
+          context.getEquipmentRenderer()));
+    }
+
+    @NotNull
+    @Override
+    public RaiderRenderState createRenderState()
+    {
+        return new RaiderRenderState();
     }
 
     @Override
-    public void render(T raider, float p_115456_, float p_115457_, PoseStack p_115458_, MultiBufferSource p_115459_, int p_115460_)
+    public void extractRenderState(@NotNull final T raider, @NotNull final RaiderRenderState state, final float partialTicks)
     {
-        model.rightArmPose = RenderUtils.getArmPose(raider, InteractionHand.MAIN_HAND);
-        model.leftArmPose = RenderUtils.getArmPose(raider, InteractionHand.OFF_HAND);
-        super.render(raider, p_115456_, p_115457_, p_115458_, p_115459_, p_115460_);
+        super.extractRenderState(raider, state, partialTicks);
+        state.textureId = raider.getTextureId();
+    }
+
+    /**
+     * The arm poses are pulled into the render state now; this hook is what feeds
+     * {@code state.leftArmPose} and {@code state.rightArmPose}.
+     */
+    @NotNull
+    @Override
+    protected HumanoidModel.ArmPose getArmPose(@NotNull final T raider, @NotNull final HumanoidArm arm)
+    {
+        return RenderUtils.getArmPose(raider, arm == HumanoidArm.RIGHT ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND);
     }
 }

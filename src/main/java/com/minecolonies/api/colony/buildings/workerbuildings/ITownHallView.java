@@ -3,6 +3,7 @@ package com.minecolonies.api.colony.buildings.workerbuildings;
 import com.minecolonies.api.colony.buildings.views.IBuildingView;
 import com.minecolonies.api.colony.colonyEvents.descriptions.IColonyEventDescription;
 import com.minecolonies.api.colony.permissions.PermissionEvent;
+import com.minecolonies.api.util.Utils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -45,7 +46,9 @@ public interface ITownHallView extends IBuildingView
         public static final StreamCodec<RegistryFriendlyByteBuf, MapEntry> STREAM_CODEC =
             StreamCodec.composite(MapId.STREAM_CODEC,
                 MapEntry::mapId,
-                StreamCodec.of((buf, data) -> buf.writeNbt(data.save(new CompoundTag(), buf.registryAccess())), buf -> MapItemSavedData.load(buf.readNbt(), buf.registryAccess())),
+                StreamCodec.of(
+                  (buf, data) -> buf.writeNbt((CompoundTag) Utils.serializeCodecMess(MapItemSavedData.CODEC, buf.registryAccess(), data)),
+                  buf -> Utils.deserializeCodecMess(MapItemSavedData.CODEC, buf.registryAccess(), buf.readNbt())),
                 MapEntry::mapData,
                 MapEntry::new);
     }

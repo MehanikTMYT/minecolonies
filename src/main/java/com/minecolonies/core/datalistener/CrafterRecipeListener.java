@@ -1,5 +1,7 @@
 package com.minecolonies.core.datalistener;
 
+import net.minecraft.util.ExtraCodecs;
+import net.minecraft.resources.FileToIdConverter;
 import com.google.gson.*;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.core.colony.crafting.CustomRecipe;
@@ -8,19 +10,23 @@ import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.GsonHelper;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.core.HolderLookup;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 import static com.minecolonies.core.colony.crafting.CustomRecipe.*;
 
 /**
  * Loader for Json based crafter specific recipes
  */
-public class CrafterRecipeListener extends SimpleJsonResourceReloadListener
+public class CrafterRecipeListener extends SimpleJsonResourceReloadListener<JsonElement>
 {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+
+    private static volatile PendingRecipes pendingRecipes;
 
     /**
      * Set up the core loading, with the directory in the datapack that contains this data
@@ -28,21 +34,37 @@ public class CrafterRecipeListener extends SimpleJsonResourceReloadListener
      */
     public CrafterRecipeListener()
     {
-        super(GSON, "crafterrecipes");
+        super(ExtraCodecs.JSON, FileToIdConverter.json("crafterrecipes"));
     }
 
     @Override
-    protected void apply(@NotNull final Map<ResourceLocation, JsonElement> object,
+    protected void apply(@NotNull final Map<Identifier, JsonElement> object,
                          @NotNull final ResourceManager resourceManagerIn,
                          @NotNull final ProfilerFiller profilerIn)
     {
+        final Map<Identifier, JsonElement> recipes = new LinkedHashMap<>();
+        object.forEach((id, json) -> recipes.put(id, json.deepCopy()));
+        pendingRecipes = new PendingRecipes(getRegistryLookup(), Map.copyOf(recipes));
+    }
+
+    /**
+     * Materialize recipe item stacks after default item components have been bound.
+     */
+    public static void applyPendingRecipes()
+    {
+        final PendingRecipes pending = pendingRecipes;
+        if (pending == null)
+        {
+            return;
+        }
+
         Log.getLogger().info("Beginning load of custom recipes for colony workers");
 
         final CustomRecipeManager recipeManager = CustomRecipeManager.getInstance();
         recipeManager.reset();
-        for(final Map.Entry<ResourceLocation, JsonElement> entry : object.entrySet())
+        for(final Map.Entry<Identifier, JsonElement> entry : pending.recipes().entrySet())
         {
-            final ResourceLocation key = entry.getKey();
+            final Identifier key = entry.getKey();
             try
             {
                 final JsonObject recipeJson = entry.getValue().getAsJsonObject();
@@ -51,13 +73,13 @@ public class CrafterRecipeListener extends SimpleJsonResourceReloadListener
                 {
                     case RECIPE_TYPE_RECIPE:
                     case RECIPE_TYPE_RECIPE_MULT_OUT:
-                        recipeManager.addRecipe(CustomRecipe.parse(getRegistryLookup(), key, recipeJson));
+                        recipeManager.addRecipe(CustomRecipe.parse(pending.registryLookup(), key, recipeJson));
                         break;
                     case RECIPE_TYPE_TEMPLATE:
                         recipeManager.addRecipeTemplate(key, recipeJson);
                         break;
                     case RECIPE_TYPE_REMOVE:
-                        final ResourceLocation toRemove = ResourceLocation.parse(GsonHelper.getAsString(recipeJson, RECIPE_ID_TO_REMOVE_PROP, ""));
+                        final Identifier toRemove = Identifier.parse(GsonHelper.getAsString(recipeJson, RECIPE_ID_TO_REMOVE_PROP, ""));
                         recipeManager.removeRecipe(toRemove);
                         break;
                 }
@@ -70,5 +92,9 @@ public class CrafterRecipeListener extends SimpleJsonResourceReloadListener
 
         final int totalRecipes = recipeManager.getAllRecipes().values().stream().mapToInt(Map::size).sum();
         Log.getLogger().info("Loaded " + totalRecipes + " recipes for " + recipeManager.getAllRecipes().size() + " crafters");
+    }
+
+    private record PendingRecipes(HolderLookup.Provider registryLookup, Map<Identifier, JsonElement> recipes)
+    {
     }
 }

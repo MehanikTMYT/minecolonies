@@ -8,9 +8,7 @@ import com.minecolonies.core.network.messages.server.colony.building.enchanter.E
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -65,8 +63,6 @@ public class EnchanterStationsModuleView extends AbstractBuildingModuleView
         buildingToGatherFrom.remove(blockPos);
         new EnchanterWorkerSetMessage(buildingView, blockPos, false).sendToServer();
     }
-
-    @OnlyIn(Dist.CLIENT)
     @Override
     public BOWindow getWindow()
     {
@@ -74,9 +70,9 @@ public class EnchanterStationsModuleView extends AbstractBuildingModuleView
     }
 
     @Override
-    public ResourceLocation getIconResourceLocation()
+    public Identifier getIconResourceLocation()
     {
-        return new ResourceLocation(Constants.MOD_ID, "textures/gui/modules/entity.png");
+        return Identifier.fromNamespaceAndPath(Constants.MOD_ID, "textures/gui/modules/entity.png");
     }
     
     @Override

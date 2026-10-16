@@ -1,5 +1,6 @@
 package com.minecolonies.core.entity.pathfinding;
 
+import net.minecraft.world.level.block.LilyPadBlock;
 import com.ldtteam.domumornamentum.block.decorative.FloatingCarpetBlock;
 import com.ldtteam.domumornamentum.block.decorative.PanelBlock;
 import com.ldtteam.domumornamentum.block.vanilla.TrapdoorBlock;
@@ -124,7 +125,7 @@ public enum SurfaceType
               || (blockState.getBlock() == Blocks.SNOW && blockState.getValue(SnowLayerBlock.LAYERS) > 1)
               || block instanceof FloatingCarpetBlock
               || block instanceof CarpetBlock
-              || block instanceof WaterlilyBlock)
+              || block instanceof LilyPadBlock)
         {
             return SurfaceType.WALKABLE;
         }

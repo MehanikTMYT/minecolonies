@@ -21,6 +21,8 @@ import com.minecolonies.api.util.constant.TypeConstants;
 import com.minecolonies.core.client.gui.WindowHutMinPlaceholder;
 import com.minecolonies.core.client.gui.huts.WindowHutWorkerModulePlaceholder;
 import com.minecolonies.core.colony.buildings.moduleviews.WorkerBuildingModuleView;
+import com.minecolonies.core.colony.requestsystem.locations.StaticLocation;
+import com.minecolonies.core.colony.requestsystem.locations.StaticLocation;
 import com.minecolonies.core.network.messages.server.colony.OpenInventoryMessage;
 import com.minecolonies.core.network.messages.server.colony.building.HutRenameMessage;
 import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
@@ -154,7 +156,12 @@ public abstract class AbstractBuildingView implements IBuildingView
     /**
      * Prestige value of this building.
      */
-    private int prestige;
+    private          int       prestige;
+
+    /**
+     * Requester location of this.
+     */
+    private @NotNull ILocation iLocation;
 
     /**
      * Creates a building view.
@@ -166,6 +173,7 @@ public abstract class AbstractBuildingView implements IBuildingView
     {
         colony = c;
         location = new BlockPos(l);
+        this.iLocation = new StaticLocation(getPosition(), colony.getDimension());
     }
 
     /**
@@ -447,7 +455,7 @@ public abstract class AbstractBuildingView implements IBuildingView
 
     private void loadRequestSystemFromNBT(@NotNull final HolderLookup.Provider provider, final CompoundTag compound)
     {
-        this.rsDataStoreToken = StandardFactoryController.getInstance().deserializeTag(provider, compound.getCompound(TAG_RS_BUILDING_DATASTORE));
+        this.rsDataStoreToken = StandardFactoryController.getInstance().deserializeTag(provider, compound.getCompoundOrEmpty(TAG_RS_BUILDING_DATASTORE));
     }
 
     private IRequestSystemBuildingDataStore getDataStore()
@@ -598,7 +606,7 @@ public abstract class AbstractBuildingView implements IBuildingView
     @Override
     public ILocation getLocation()
     {
-        return null;
+        return this.iLocation;
     }
 
     @Override

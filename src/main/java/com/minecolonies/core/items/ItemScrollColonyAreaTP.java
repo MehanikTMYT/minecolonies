@@ -1,5 +1,7 @@
 package com.minecolonies.core.items;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.items.component.Desc;
 import com.minecolonies.api.util.ItemStackUtils;
@@ -8,6 +10,7 @@ import com.minecolonies.core.network.messages.client.VanillaParticleMessage;
 import com.minecolonies.core.util.TeleportHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.particles.SpellParticleOption;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
@@ -50,12 +53,12 @@ public class ItemScrollColonyAreaTP extends AbstractItemScroll
     @Override
     protected ItemStack onItemUseSuccess(final ItemStack itemStack, final Level world, final ServerPlayer player)
     {
-        if (world.random.nextInt(10) == 0)
+        if (world.getRandom().nextInt(10) == 0)
         {
             // Fail chance
-            player.displayClientMessage(Component.translatableEscape(
-              "minecolonies.scroll.failed" + (world.random.nextInt(FAIL_RESPONSES_TOTAL) + 1)).setStyle(Style.EMPTY.withColor(
-              ChatFormatting.GOLD)), true);
+            player.sendOverlayMessage(Component.translatableEscape(
+              "minecolonies.scroll.failed" + (world.getRandom().nextInt(FAIL_RESPONSES_TOTAL) + 1)).setStyle(Style.EMPTY.withColor(
+              ChatFormatting.GOLD)));
 
             itemStack.shrink(1);
             if (!ItemStackUtils.isEmpty(itemStack))
@@ -103,15 +106,15 @@ public class ItemScrollColonyAreaTP extends AbstractItemScroll
     @Override
     public void onUseTick(Level worldIn, LivingEntity entity, ItemStack stack, int count)
     {
-        if (!worldIn.isClientSide && worldIn.getGameTime() % 5 == 0 && entity instanceof Player)
+        if (!worldIn.isClientSide() && worldIn.getGameTime() % 5 == 0 && entity instanceof Player)
         {
             final ServerPlayer sPlayer = (ServerPlayer) entity;
             for (final Entity player : getAffectedPlayers(sPlayer))
             {
-                new VanillaParticleMessage(player.getX(), player.getY(), player.getZ(), ParticleTypes.INSTANT_EFFECT).sendToTrackingEntity(player);
+                new VanillaParticleMessage(player.getX(), player.getY(), player.getZ(), SpellParticleOption.create(ParticleTypes.INSTANT_EFFECT, 0x7F00FF, 1.0F)).sendToTrackingEntity(player);
             }
 
-            new VanillaParticleMessage(sPlayer.getX(), sPlayer.getY(), sPlayer.getZ(), ParticleTypes.INSTANT_EFFECT).sendToPlayer(sPlayer);
+            new VanillaParticleMessage(sPlayer.getX(), sPlayer.getY(), sPlayer.getZ(), SpellParticleOption.create(ParticleTypes.INSTANT_EFFECT, 0x7F00FF, 1.0F)).sendToPlayer(sPlayer);
         }
     }
 
@@ -124,11 +127,15 @@ public class ItemScrollColonyAreaTP extends AbstractItemScroll
     }
 
     @Override
-    public void appendHoverText(@NotNull final ItemStack stack, @Nullable final TooltipContext ctx, @NotNull final List<Component> tooltip, @NotNull final TooltipFlag flagIn)
+    public void appendHoverText(@NotNull final ItemStack stack,
+      @Nullable final TooltipContext ctx,
+      @NotNull final TooltipDisplay display,
+      @NotNull final Consumer<Component> tooltip,
+      @NotNull final TooltipFlag flagIn)
     {
         final MutableComponent guiHint = Component.translatableEscape(TOOL_COLONY_TELEPORT_AREA_SCROLL_DESCRIPTION);
         guiHint.setStyle(Style.EMPTY.withColor(ChatFormatting.DARK_GREEN));
-        tooltip.add(guiHint);
+        tooltip.accept(guiHint);
 
         MutableComponent colonyDesc = Component.translatable(TOOL_COLONY_TELEPORT_SCROLL_NO_COLONY);
 
@@ -140,6 +147,6 @@ public class ItemScrollColonyAreaTP extends AbstractItemScroll
 
         final MutableComponent guiHint2 = Component.translatableEscape(TOOL_COLONY_TELEPORT_SCROLL_COLONY_NAME, colonyDesc);
         guiHint2.setStyle(Style.EMPTY.withColor(ChatFormatting.GOLD));
-        tooltip.add(guiHint2);
+        tooltip.accept(guiHint2);
     }
 }

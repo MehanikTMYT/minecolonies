@@ -3,8 +3,8 @@ package com.minecolonies.api.entity.citizen;
 import com.minecolonies.api.colony.ICivilianData;
 import com.minecolonies.api.entity.other.AbstractFastMinecoloniesEntity;
 import com.minecolonies.api.entity.other.MinecoloniesMinecart;
+import com.minecolonies.core.entity.other.ICitizenJobMount;
 import com.minecolonies.core.entity.other.SittingEntity;
-import com.minecolonies.core.entity.other.cavalry.CavalryHorseEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
@@ -149,15 +149,14 @@ public abstract class AbstractCivilianEntity extends AbstractFastMinecoloniesEnt
      * Prevent riding entities except ours.
      *
      * @param entity entity to ride on
-     * @param force  force flag
-     * @return true if successful.
+     * @return whether this civilian may ride the entity.
      */
     @Override
-    public boolean startRiding(final @NotNull Entity entity, final boolean force)
+    protected boolean canRide(final @NotNull Entity entity)
     {
-        if (entity instanceof SittingEntity || entity instanceof MinecoloniesMinecart || entity instanceof CavalryHorseEntity)
+        if (entity instanceof SittingEntity || entity instanceof MinecoloniesMinecart || entity instanceof ICitizenJobMount)
         {
-            return super.startRiding(entity, force);
+            return true;
         }
         return false;
     }

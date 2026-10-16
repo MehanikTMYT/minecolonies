@@ -6,10 +6,10 @@ import com.minecolonies.api.blocks.decorative.AbstractColonyFlagBanner;
 import com.minecolonies.api.util.constant.Constants;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.context.BlockPlaceContext;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.core.Direction;
@@ -22,6 +22,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
+import net.minecraft.util.RandomSource;
 
 import java.util.Map;
 
@@ -40,7 +42,7 @@ public class BlockColonyFlagWallBanner extends AbstractColonyFlagBanner<BlockCol
         .group(DyeColor.CODEC.fieldOf("color").forGetter(BlockColonyFlagWallBanner::getColor),
             propertiesCodec())
         .apply(builder, BlockColonyFlagWallBanner::new));
-    public static final DirectionProperty          HORIZONTAL_FACING = HorizontalDirectionalBlock.FACING;
+    public static final EnumProperty<Direction>          HORIZONTAL_FACING = HorizontalDirectionalBlock.FACING;
     private static final Map<Direction, VoxelShape> BANNER_SHAPES     = Maps.newEnumMap(ImmutableMap.of(
             Direction.NORTH, Block.box(0.0D, 0.0D, 14.0D, 16.0D, 12.5D, 16.0D),
             Direction.SOUTH, Block.box(0.0D, 0.0D, 0.0D, 16.0D, 12.5D, 2.0D),
@@ -52,7 +54,7 @@ public class BlockColonyFlagWallBanner extends AbstractColonyFlagBanner<BlockCol
         this(DyeColor.WHITE,
             Properties.of().mapColor(MapColor.WOOD)
               .sound(SoundType.WOOD)
-                .noCollission()
+                .noCollision()
                 .strength(1F)
                 .sound(SoundType.WOOD));
     }
@@ -70,18 +72,16 @@ public class BlockColonyFlagWallBanner extends AbstractColonyFlagBanner<BlockCol
     }
 
     @Override
-    public String getDescriptionId() { return this.asItem().getDescriptionId(); }
-
-    @Override
     public boolean canSurvive(BlockState state, LevelReader worldIn, BlockPos pos)
     {
         return worldIn.getBlockState(pos.relative(state.getValue(HORIZONTAL_FACING).getOpposite())).isSolid();
     }
 
     @Override
-    public BlockState updateShape(BlockState stateIn, Direction facing, BlockState facingState, LevelAccessor worldIn, BlockPos currentPos, BlockPos facingPos)
+    protected BlockState updateShape(BlockState stateIn, LevelReader worldIn, ScheduledTickAccess ticks, BlockPos currentPos,
+      Direction facing, BlockPos facingPos, BlockState facingState, RandomSource random)
     {
-        return facing == stateIn.getValue(HORIZONTAL_FACING).getOpposite() && !stateIn.canSurvive(worldIn, currentPos) ? Blocks.AIR.defaultBlockState() : super.updateShape(stateIn, facing, facingState, worldIn, currentPos, facingPos);
+        return facing == stateIn.getValue(HORIZONTAL_FACING).getOpposite() && !stateIn.canSurvive(worldIn, currentPos) ? Blocks.AIR.defaultBlockState() : super.updateShape(stateIn, worldIn, ticks, currentPos, facing, facingPos, facingState, random);
     }
 
     @Override
@@ -128,8 +128,8 @@ public class BlockColonyFlagWallBanner extends AbstractColonyFlagBanner<BlockCol
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) { builder.add(HORIZONTAL_FACING); }
 
     @Override
-    public ResourceLocation getRegistryName()
+    public Identifier getRegistryName()
     {
-        return new ResourceLocation(Constants.MOD_ID, REGISTRY_NAME_WALL);
+        return Identifier.fromNamespaceAndPath(Constants.MOD_ID, REGISTRY_NAME_WALL);
     }
 }

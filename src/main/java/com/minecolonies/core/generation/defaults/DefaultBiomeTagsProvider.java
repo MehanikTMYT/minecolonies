@@ -7,7 +7,6 @@ import net.minecraft.data.tags.BiomeTagsProvider;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.biome.Biomes;
 import net.neoforged.neoforge.common.Tags;
-import net.neoforged.neoforge.common.data.ExistingFileHelper;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
@@ -20,10 +19,9 @@ public class DefaultBiomeTagsProvider extends BiomeTagsProvider
 
     public DefaultBiomeTagsProvider(
       final PackOutput output,
-      final CompletableFuture<HolderLookup.Provider> lookupProvider,
-      @Nullable final ExistingFileHelper existingFileHelper)
+      final CompletableFuture<HolderLookup.Provider> lookupProvider)
     {
-        super(output, lookupProvider, MOD_ID, existingFileHelper);
+        super(output, lookupProvider, MOD_ID);
     }
 
     @Override

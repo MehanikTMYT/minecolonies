@@ -16,12 +16,17 @@ import com.minecolonies.api.entity.mobs.vikings.AbstractEntityNorsemen;
 import com.minecolonies.api.entity.mobs.vikings.AbstractEntityNorsemenRaider;
 import com.minecolonies.api.entity.other.MinecoloniesMinecart;
 import com.minecolonies.core.entity.other.NewBobberEntity;
+import com.minecolonies.core.entity.other.DruidPotionEntity;
+import com.minecolonies.core.entity.other.SittingEntity;
 import com.minecolonies.core.entity.other.cavalry.CavalryHorseEntity;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.projectile.*;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
+import net.minecraft.world.entity.projectile.arrow.Arrow;
+import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
 
 import java.util.List;
 
@@ -47,7 +52,7 @@ public class ModEntities
 
     public static EntityType<? extends AbstractEntityPirateRaider> ARCHERPIRATE;
 
-    public static EntityType<? extends Entity> SITTINGENTITY;
+    public static EntityType<SittingEntity> SITTINGENTITY;
 
     public static EntityType<? extends AbstractEntityEgyptianRaider> MUMMY;
 
@@ -75,7 +80,7 @@ public class ModEntities
 
     public static EntityType<? extends Arrow> MC_NORMAL_ARROW;
 
-    public static EntityType<? extends ThrownPotion> DRUID_POTION;
+    public static EntityType<DruidPotionEntity> DRUID_POTION;
 
     public static EntityType<? extends ThrownTrident> SPEAR;
 

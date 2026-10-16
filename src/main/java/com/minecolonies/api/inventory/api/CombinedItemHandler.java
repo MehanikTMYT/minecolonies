@@ -7,7 +7,9 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.common.util.INBTSerializable;
+import com.minecolonies.api.util.INBTSerializable;
+import com.minecolonies.api.util.ValueIOUtils;
+import net.neoforged.neoforge.common.util.ValueIOSerializable;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
 import org.jetbrains.annotations.NotNull;
@@ -84,10 +86,14 @@ public class CombinedItemHandler implements IItemHandlerModifiable, INBTSerializ
         final ListTag indexList = new ListTag();
         for (final IItemHandlerModifiable handlerModifiable : handlers)
         {
-            if (handlerModifiable instanceof INBTSerializable)
+            if (handlerModifiable instanceof final INBTSerializable<?> serializable)
             {
-                final INBTSerializable<?> serializable = (INBTSerializable<?>) handlerModifiable;
                 handlerList.add(serializable.serializeNBT(provider));
+                indexList.add(IntTag.valueOf(index));
+            }
+            else if (handlerModifiable instanceof final ValueIOSerializable serializable)
+            {
+                handlerList.add(ValueIOUtils.serializeToTag(serializable, provider));
                 indexList.add(IntTag.valueOf(index));
             }
 
@@ -109,24 +115,28 @@ public class CombinedItemHandler implements IItemHandlerModifiable, INBTSerializ
     @Override
     public void deserializeNBT(@NotNull final HolderLookup.Provider provider, final CompoundTag nbt)
     {
-        final ListTag handlerList = nbt.getList(NBT_KEY_HANDLERS, Tag.TAG_COMPOUND);
-        final ListTag indexList = nbt.getList(NBT_KEY_HANDLERS_INDEXLIST, Tag.TAG_INT);
+        final ListTag handlerList = nbt.getListOrEmpty(NBT_KEY_HANDLERS);
+        final ListTag indexList = nbt.getListOrEmpty(NBT_KEY_HANDLERS_INDEXLIST);
 
         if (handlerList.size() == handlers.length)
         {
             for (int i = 0; i < handlerList.size(); i++)
             {
-                final CompoundTag handlerCompound = handlerList.getCompound(i);
-                final IItemHandlerModifiable modifiable = handlers[indexList.getInt(i)];
+                final CompoundTag handlerCompound = handlerList.getCompoundOrEmpty(i);
+                final IItemHandlerModifiable modifiable = handlers[indexList.getIntOr(i, 0)];
                 if (modifiable instanceof INBTSerializable)
                 {
                     final INBTSerializable<CompoundTag> serializable = (INBTSerializable<CompoundTag>) modifiable;
                     serializable.deserializeNBT(provider, handlerCompound);
                 }
+                else if (modifiable instanceof final ValueIOSerializable serializable)
+                {
+                    ValueIOUtils.deserializeFromTag(serializable, provider, handlerCompound);
+                }
             }
         }
 
-        setName(nbt.contains(NBT_KEY_NAME) ? nbt.getString(NBT_KEY_NAME) : null);
+        setName(nbt.contains(NBT_KEY_NAME) ? nbt.getStringOr(NBT_KEY_NAME, "") : null);
     }
 
     /**

@@ -1,5 +1,8 @@
 package com.minecolonies.core.tileentities;
 
+import com.minecolonies.api.util.ValueIOUtils;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
 import com.minecolonies.api.blocks.AbstractBlockMinecoloniesGrave;
 import com.minecolonies.api.blocks.types.GraveType;
 import com.minecolonies.api.colony.GraveData;
@@ -76,7 +79,7 @@ public class TileEntityGrave extends AbstractTileEntityGrave implements Clearabl
     @Override
     public void updateItemStorage()
     {
-        if (level != null && !level.isClientSide)
+        if (level != null && !level.isClientSide())
         {
             final boolean empty = content.isEmpty();
             updateContent();
@@ -141,25 +144,25 @@ public class TileEntityGrave extends AbstractTileEntityGrave implements Clearabl
     }
 
     @Override
-    public void loadAdditional(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
+    protected void loadAdditionalTag(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
     {
-        super.loadAdditional(compound, provider);
+        super.loadAdditionalTag(compound, provider);
 
-        decay_timer         = compound.contains(TAG_DECAY_TIMER) ? compound.getInt(TAG_DECAY_TIMER) : DEFAULT_DECAY_TIMER;
-        decayed             = compound.contains(TAG_DECAYED) ? compound.getBoolean(TAG_DECAYED) :false;
+        decay_timer         = compound.contains(TAG_DECAY_TIMER) ? compound.getIntOr(TAG_DECAY_TIMER, 0) : DEFAULT_DECAY_TIMER;
+        decayed             = compound.contains(TAG_DECAYED) ? compound.getBooleanOr(TAG_DECAYED, false) :false;
 
         if (compound.contains(TAG_GRAVE_DATA))
         {
             graveData = new GraveData();
-            graveData.read(compound.getCompound(TAG_GRAVE_DATA));
+            graveData.read(compound.getCompoundOrEmpty(TAG_GRAVE_DATA));
         }
         else graveData = null;
     }
 
     @Override
-    public void saveAdditional(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
+    protected void saveAdditionalTag(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
     {
-        super.saveAdditional(compound, provider);
+        super.saveAdditionalTag(compound, provider);
 
         compound.putInt(TAG_DECAY_TIMER, decay_timer);
         compound.putBoolean(TAG_DECAYED, decayed);
@@ -180,19 +183,19 @@ public class TileEntityGrave extends AbstractTileEntityGrave implements Clearabl
     @Override
     public CompoundTag getUpdateTag(@NotNull final HolderLookup.Provider provider)
     {
-        return this.saveWithId(provider);
+        return this.saveWithoutMetadata(provider);
     }
 
     @Override
-    public void onDataPacket(final Connection net, final ClientboundBlockEntityDataPacket packet, @NotNull final HolderLookup.Provider provider)
+    public void onDataPacket(final Connection net, @NotNull final ValueInput input)
     {
-        this.loadAdditional(packet.getTag(), provider);
+        this.loadAdditional(input);
     }
 
     @Override
-    public void handleUpdateTag(final CompoundTag tag, @NotNull final HolderLookup.Provider provider)
+    public void handleUpdateTag(@NotNull final ValueInput input)
     {
-        this.loadAdditional(tag, provider);
+        this.loadAdditional(input);
     }
 
     @Override
@@ -218,7 +221,7 @@ public class TileEntityGrave extends AbstractTileEntityGrave implements Clearabl
     @Override
     public Component getDisplayName()
     {
-        return Component.literal("Grave");
+        return Component.translatable("com.minecolonies.port26.ui.grave");
     }
 
     /**
@@ -230,7 +233,7 @@ public class TileEntityGrave extends AbstractTileEntityGrave implements Clearabl
      **/
     public boolean onColonyTick(final double delay)
     {
-        if (this.hasLevel() && !level.isClientSide && decay_timer != -1)
+        if (this.hasLevel() && !level.isClientSide() && decay_timer != -1)
         {
             decay_timer -= delay;
             if (decay_timer <= 0)

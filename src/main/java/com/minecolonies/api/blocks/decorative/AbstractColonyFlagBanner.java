@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.AbstractBannerBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import static com.minecolonies.api.util.RegistryConstructionContext.applyBlockKey;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
@@ -30,7 +31,7 @@ public abstract class AbstractColonyFlagBanner<B extends AbstractColonyFlagBanne
 
     public AbstractColonyFlagBanner(final DyeColor dyeColor, final Properties properties)
     {
-        super(dyeColor, properties);
+        super(dyeColor, applyBlockKey(properties));
     }
 
     @Override
@@ -42,7 +43,7 @@ public abstract class AbstractColonyFlagBanner<B extends AbstractColonyFlagBanne
     @Override
     public void setPlacedBy(final Level worldIn, final @NotNull BlockPos pos, @NotNull BlockState state, @Nullable LivingEntity placer, @NotNull ItemStack stack)
     {
-        if (worldIn.isClientSide)
+        if (worldIn.isClientSide())
         {
             return;
         }

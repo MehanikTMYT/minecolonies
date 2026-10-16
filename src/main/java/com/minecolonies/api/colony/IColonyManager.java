@@ -18,7 +18,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.jetbrains.annotations.NotNull;
@@ -287,13 +286,6 @@ public interface IColonyManager
     void read(final HolderLookup.Provider provider, @NotNull CompoundTag compound);
 
     /**
-     * On Client tick, clears views when player left.
-     *
-     * @param event {@link net.neoforged.neoforge.client.event.ClientTickEvent}.
-     */
-    void onClientTick(@NotNull ClientTickEvent.Pre event);
-
-    /**
      * On world tick, tick every Colony in that world. NOTE: Review this for performance.
      */
     void onWorldTick(@NotNull LevelTickEvent.Pre event);
@@ -451,12 +443,6 @@ public interface IColonyManager
      * Reset all colony views on login to new world.
      */
     void resetColonyViews();
-
-    /**
-     * Open the new reactivation window.
-     * @param pos the pos to open it at.
-     */
-    void openReactivationWindow(final BlockPos pos);
 
     /**
      * Adds colony directly to cap. Use only during loading!

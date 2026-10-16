@@ -1,19 +1,20 @@
 package com.minecolonies.api.blocks.huts;
 
+import net.minecraft.core.Direction;
 import com.minecolonies.api.blocks.AbstractBlockMinecoloniesContainer;
 import net.minecraft.core.Registry;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public abstract class AbstractBlockMinecoloniesDefault<B extends AbstractBlockMinecoloniesDefault<B>> extends AbstractBlockMinecoloniesContainer<B>
 {
     /**
      * The position it faces.
      */
-    public static final DirectionProperty FACING           = HorizontalDirectionalBlock.FACING;
+    public static final EnumProperty<Direction> FACING           = HorizontalDirectionalBlock.FACING;
     /**
      * Hardness of the block.
      */

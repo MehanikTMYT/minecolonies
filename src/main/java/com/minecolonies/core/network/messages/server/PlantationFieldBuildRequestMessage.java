@@ -20,7 +20,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -107,7 +107,7 @@ public class PlantationFieldBuildRequestMessage extends AbstractServerPlayMessag
         buf.writeBlockPos(this.pos);
         buf.writeUtf(this.packName);
         buf.writeUtf(this.path);
-        buf.writeUtf(this.dimension.location().toString());
+        buf.writeUtf(this.dimension.identifier().toString());
         buf.writeByte(this.rotationMirror.ordinal());
         buf.writeBlockPos(this.builder);
     }
@@ -119,7 +119,7 @@ public class PlantationFieldBuildRequestMessage extends AbstractServerPlayMessag
         this.pos = buf.readBlockPos();
         this.packName = buf.readUtf(32767);
         this.path = buf.readUtf(32767);
-        this.dimension = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(buf.readUtf(32767)));
+        this.dimension = ResourceKey.create(Registries.DIMENSION, Identifier.parse(buf.readUtf(32767)));
         this.rotationMirror = RotationMirror.values()[buf.readByte()];
         this.builder = buf.readBlockPos();
     }

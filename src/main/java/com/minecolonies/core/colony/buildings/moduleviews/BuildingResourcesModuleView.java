@@ -8,10 +8,8 @@ import com.minecolonies.core.client.gui.modules.building.WindowBuilderResModule;
 import com.minecolonies.core.colony.buildings.utils.BuildingBuilderResource;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
@@ -54,7 +52,7 @@ public class BuildingResourcesModuleView extends AbstractBuildingModuleView
             final int amountNeeded = buf.readInt();
             final BuildingBuilderResource resource = new BuildingBuilderResource(itemStack, amountNeeded, amountAvailable);
             final int hashCode = itemStack.getComponentsPatch().hashCode();
-            final String key = itemStack.getDescriptionId() + "-" + hashCode;
+            final String key = itemStack.getItem().getDescriptionId() + "-" + hashCode;
             resources.put(key, resource);
         }
 
@@ -120,8 +118,6 @@ public class BuildingResourcesModuleView extends AbstractBuildingModuleView
     {
         return totalStages;
     }
-
-    @OnlyIn(Dist.CLIENT)
     @Override
     public BOWindow getWindow()
     {
@@ -129,9 +125,9 @@ public class BuildingResourcesModuleView extends AbstractBuildingModuleView
     }
 
     @Override
-    public ResourceLocation getIconResourceLocation()
+    public Identifier getIconResourceLocation()
     {
-        return new ResourceLocation(Constants.MOD_ID, "textures/gui/modules/inventory.png");
+        return Identifier.fromNamespaceAndPath(Constants.MOD_ID, "textures/gui/modules/inventory.png");
     }
 
     @Override

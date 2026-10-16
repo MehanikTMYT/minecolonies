@@ -1,16 +1,19 @@
 package com.minecolonies.core.event;
 
-import com.ldtteam.blockui.AtlasManager;
+import com.ldtteam.blockui.mod.BlockUI;
 import com.minecolonies.api.util.constant.Constants;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
+import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
+import net.neoforged.neoforge.client.event.RegisterTextureAtlasesEvent;
+import net.minecraft.client.resources.metadata.gui.GuiMetadataSection;
+import net.minecraft.client.resources.model.sprite.AtlasManager.AtlasConfig;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -18,12 +21,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static net.neoforged.fml.common.EventBusSubscriber.Bus.MOD;
 
 /**
  * Specific texture reload listener.
  */
-@EventBusSubscriber(value= Dist.CLIENT, modid= Constants.MOD_ID, bus=MOD)
+@EventBusSubscriber(value= Dist.CLIENT, modid= Constants.MOD_ID)
 public class TextureReloadListener extends SimplePreparableReloadListener<TextureReloadListener.TexturePacks>
 {
     /**
@@ -36,8 +38,8 @@ public class TextureReloadListener extends SimplePreparableReloadListener<Textur
     protected TexturePacks prepare(@NotNull final ResourceManager manager, @NotNull final ProfilerFiller profiler)
     {
         final Set<String> set = new HashSet<>();
-        final List<ResourceLocation> resLocs = new ArrayList<>(manager.listResources("textures/entity/citizen", f -> true).keySet());
-        for (final ResourceLocation res : resLocs)
+        final List<Identifier> resLocs = new ArrayList<>(manager.listResources("textures/entity/citizen", f -> true).keySet());
+        for (final Identifier res : resLocs)
         {
             if (res.getPath().contains("png") && res.getPath().contains("textures/entity/citizen"))
             {
@@ -70,12 +72,18 @@ public class TextureReloadListener extends SimplePreparableReloadListener<Textur
     }
 
     @SubscribeEvent
-    public static void modInitClient(final RegisterClientReloadListenersEvent event)
+    public static void modInitClient(final AddClientReloadListenersEvent event)
     {
-        event.registerReloadListener(new TextureReloadListener());
+        event.addListener(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "citizen_textures"), new TextureReloadListener());
+    }
 
-        // registry minecolonies gui atlas
-        AtlasManager.INSTANCE.addAtlas(event::registerReloadListener, Constants.MOD_ID);
+    @SubscribeEvent
+    public static void registerTextureAtlas(final RegisterTextureAtlasesEvent event)
+    {
+        final Identifier atlas = Identifier.fromNamespaceAndPath(Constants.MOD_ID, "minecolonies_gui");
+        BlockUI.NAMESPACE_TO_ATLAS_MAP.put(Constants.MOD_ID, atlas);
+        event.register(new AtlasConfig(
+          Identifier.fromNamespaceAndPath(Constants.MOD_ID, "textures/atlas/minecolonies_gui.png"),
+          atlas, false, Set.of(GuiMetadataSection.TYPE)));
     }
 }
-

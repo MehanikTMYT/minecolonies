@@ -1,22 +1,20 @@
-/*repositories {
-    maven {
-        name "JEI"
-        url 'https://maven.blamejared.com/'
-    }
+repositories {
     maven {
         name "JourneyMap"
         url "https://jm.gserv.me/repository/maven-public/"
     }
-    maven {
-        name "Rei"
-        url "https://maven.shedaniel.me/"
-    }
-}*/
+}
 
 dependencies {
-    implementation ("com.ldtteam:domum-ornamentum:${project.domumOrnamentumVersion}"){
-        transitive = false
-    }
+    // PORT26_DOMUM_DEPENDENCY
+    // Temporary local compile/runtime bridge.
+    // Resolved against -Dmaven.repo.local when set (remote builds on vdsfi use their own repo), else ~/.m2/repository.
+    final String domumRepo = System.getProperty('maven.repo.local', System.getProperty('user.home') + '/.m2/repository')
+    implementation files(
+        "${domumRepo}/com/ldtteam/domum-ornamentum/1.0.0-local/domum-ornamentum-1.0.0-local-api.jar",
+        "${domumRepo}/com/ldtteam/domum-ornamentum/1.0.0-local/domum-ornamentum-1.0.0-local-main.jar"
+    )
+
 
     implementation ("com.ldtteam:blockui:${project.blockUI_version}"){
         transitive = false
@@ -36,12 +34,21 @@ dependencies {
 
     // optional compat mods (not included in test environment by default)
 
-    compileOnly "mezz.jei:jei-${project.jei_mcversion}-neoforge-api:${project.jei_version}"
-    runtimeOnly "mezz.jei:jei-${project.jei_mcversion}-neoforge:${project.jei_version}"
-
-    compileOnly "info.journeymap:journeymap-api-neoforge:${project.jmapApiVersion}"
+    // Recipe viewer: EMI only (fleet policy; the JEI integration was replaced by compatibility/emi).
+    compileOnly("info.journeymap:journeymap-api-neoforge:${project.jmapApiVersion}") {
+        transitive = false
+    }
     if (project.findProperty("runWithJourneymap")?.toString()?.toBoolean() == true) {
          runtimeOnly "flat:journeymap-neoforge:${project.jmapVersion}"
+    }
+
+    // Native EMI integration. Built locally to mavenLocal() from the port26.1 branch of
+    // https://github.com/MehanikTMYT/emi (no official EMI release exists for MC 26.1 yet).
+    compileOnly("dev.emi:emi-neoforge:${project.emiVersion}:api") {
+        transitive = false
+    }
+    if (project.findProperty("runWithEmi")?.toString()?.toBoolean() == true) {
+        runtimeOnly "dev.emi:emi-neoforge:${project.emiVersion}"
     }
 
     if (project.hasProperty("dynamicTreesVersion")) {

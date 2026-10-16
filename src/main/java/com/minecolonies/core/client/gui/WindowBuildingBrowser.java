@@ -20,7 +20,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
@@ -69,7 +69,7 @@ public class WindowBuildingBrowser extends AbstractWindowSkeleton
      */
     public WindowBuildingBrowser(@NotNull final Block block)
     {
-        super(new ResourceLocation(Constants.MOD_ID, "gui/windowbrowsebuilding.xml"));
+        super(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "gui/windowbrowsebuilding.xml"));
         this.block = block;
     }
 
@@ -177,7 +177,7 @@ public class WindowBuildingBrowser extends AbstractWindowSkeleton
                 final Text sizeLabel = rowPane.findPaneOfTypeByID("buildingSize", Text.class);
                 final Text levelLabel = rowPane.findPaneOfTypeByID("buildingLevel", Text.class);
 
-                packLabel.setText(Component.literal(building.pack().getName()));
+                packLabel.setText(com.ldtteam.structurize.client.gui.PackNames.pack(building.pack().getName()));
                 nameLabel.setText(Component.literal(building.path()));
                 nameLabel.setColors(building.isParent() ? building.isInvisible() ? COLOR_INVISIBLE_CHILD : COLOR_CHILD
                         : building.isInvisible() ? COLOR_INVISIBLE : COLOR_NORMAL);
@@ -417,7 +417,7 @@ public class WindowBuildingBrowser extends AbstractWindowSkeleton
             assert !anchor.hasTileEntityData() || anchor.getTileEntityData() != null;   // quiet warnings
             if (anchor.hasTileEntityData() && anchor.getTileEntityData().contains(TAG_BLUEPRINTDATA))
             {
-                final Map<BlockPos, List<String>> tagMap = IBlueprintDataProviderBE.readTagPosMapFrom(anchor.getTileEntityData().getCompound(TAG_BLUEPRINTDATA));
+                final Map<BlockPos, List<String>> tagMap = IBlueprintDataProviderBE.readTagPosMapFrom(anchor.getTileEntityData().getCompoundOrEmpty(TAG_BLUEPRINTDATA));
                 final List<String> anchorTags = tagMap.computeIfAbsent(BlockPos.ZERO, k -> new ArrayList<>());
                 if (anchorTags.contains(INVISIBLE_TAG))
                 {

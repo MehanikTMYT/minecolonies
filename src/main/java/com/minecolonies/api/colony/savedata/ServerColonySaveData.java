@@ -14,9 +14,10 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -32,16 +33,19 @@ public class ServerColonySaveData extends SavedData implements IServerColonySave
     /**
      * World save data name.
      */
-    public static final String NAME = new ResourceLocation(Constants.MOD_ID, "colony_manager").toDebugFileName();
+    public static final String NAME = Identifier.fromNamespaceAndPath(Constants.MOD_ID, "colony_manager").toDebugFileName();
 
     /**
      * Worldsavedata factory.
      */
-    public static final SavedData.Factory<ServerColonySaveData> FACTORY = new SavedData.Factory<>(ServerColonySaveData::new, (d,a) -> {
-        final ServerColonySaveData colonyManagerData = new ServerColonySaveData();
-        colonyManagerData.readNBT(a, d);
-        return colonyManagerData;
-    });
+    public static final SavedDataType<ServerColonySaveData> TYPE = new SavedDataType<>(
+      Identifier.withDefaultNamespace(NAME),
+      level -> new ServerColonySaveData(),
+      level -> CompoundTag.CODEC.xmap(tag -> {
+          final ServerColonySaveData data = new ServerColonySaveData();
+          data.readNBT(level.registryAccess(), tag);
+          return data;
+      }, data -> data.writeNBT(level.registryAccess(), new CompoundTag())));
 
     /**
      * The list of all colonies.
@@ -57,13 +61,6 @@ public class ServerColonySaveData extends SavedData implements IServerColonySave
     private ServerColonySaveData()
     {
 
-    }
-
-    @NotNull
-    @Override
-    public CompoundTag save(final @NotNull CompoundTag tag, @NotNull final HolderLookup.Provider provider)
-    {
-        return writeNBT(provider, tag);
     }
 
     @Override
@@ -147,7 +144,7 @@ public class ServerColonySaveData extends SavedData implements IServerColonySave
 
     private void readNBT(@NotNull final HolderLookup.Provider provider, final CompoundTag inputTag)
     {
-        final CompoundTag compound = inputTag.getCompound(Constants.MOD_ID);
+        final CompoundTag compound = inputTag.getCompoundOrEmpty(Constants.MOD_ID);
 
         if (!compound.contains(TAG_COLONIES))
         {
@@ -157,7 +154,7 @@ public class ServerColonySaveData extends SavedData implements IServerColonySave
 
         // Load all colonies from Nbt
         Multimap<BlockPos, IColony> tempColonies = ArrayListMultimap.create();
-        for (final Tag tag : compound.getList(TAG_COLONIES, Tag.TAG_COMPOUND))
+        for (final Tag tag : compound.getListOrEmpty(TAG_COLONIES))
         {
             final IColony colony = Colony.loadColony((CompoundTag) tag, null, provider);
             if (colony != null)
@@ -169,7 +166,7 @@ public class ServerColonySaveData extends SavedData implements IServerColonySave
 
         if (compound.contains(TAG_COLONY_MANAGER))
         {
-            IColonyManager.getInstance().read(provider, compound.getCompound(TAG_COLONY_MANAGER));
+            IColonyManager.getInstance().read(provider, compound.getCompoundOrEmpty(TAG_COLONY_MANAGER));
             this.overworld = true;
         }
 

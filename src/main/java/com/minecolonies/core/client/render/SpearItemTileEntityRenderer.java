@@ -3,50 +3,63 @@ package com.minecolonies.core.client.render;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.core.client.model.SpearModel;
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.geom.EntityModelSet;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.client.model.geom.ModelLayers;
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.entity.ItemRenderer;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.world.item.ItemDisplayContext;
-import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.special.NoDataSpecialModelRenderer;
+import net.minecraft.client.renderer.special.SpecialModelRenderer;
+import net.minecraft.resources.Identifier;
+import org.joml.Vector3fc;
 
-@OnlyIn(Dist.CLIENT)
-public class SpearItemTileEntityRenderer extends BlockEntityWithoutLevelRenderer
+import java.util.function.Consumer;
+
+/** Item special renderer for the three-dimensional spear model. */
+public class SpearItemTileEntityRenderer implements NoDataSpecialModelRenderer
 {
-    private static final ResourceLocation TEXTURE = new ResourceLocation(Constants.MOD_ID, "textures/entity/spear.png");
-    private              SpearModel       model;
-    private final        EntityModelSet   set;
+    private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(Constants.MOD_ID, "textures/entity/spear.png");
 
-    public SpearItemTileEntityRenderer()
+    private final SpearModel model;
+
+    public SpearItemTileEntityRenderer(final SpearModel model)
     {
-        super(Minecraft.getInstance().getBlockEntityRenderDispatcher(), Minecraft.getInstance().getEntityModels());
-        this.set = Minecraft.getInstance().getEntityModels();
-        this.model = new SpearModel(this.set.bakeLayer(ModelLayers.TRIDENT));
+        this.model = model;
     }
 
     @Override
-    public void onResourceManagerReload(ResourceManager manager)
+    public void submit(
+      final PoseStack poseStack,
+      final SubmitNodeCollector submitNodeCollector,
+      final int lightCoords,
+      final int overlayCoords,
+      final boolean hasFoil,
+      final int outlineColor)
     {
-        this.model = new SpearModel(this.set.bakeLayer(ModelLayers.TRIDENT));
+        submitNodeCollector.submitModelPart(
+          this.model.root(), poseStack, this.model.renderType(TEXTURE), lightCoords, overlayCoords,
+          null, false, hasFoil, -1, null, outlineColor);
     }
 
     @Override
-    public void renderByItem(
-      final ItemStack stack,
-      final ItemDisplayContext displayContext,
-      final PoseStack matrixStack,
-      final MultiBufferSource buffer,
-      final int combinedLight,
-      final int combinedOverlay)
+    public void getExtents(final Consumer<Vector3fc> output)
     {
-        matrixStack.pushPose();
-        model.renderToBuffer(matrixStack, ItemRenderer.getFoilBuffer(buffer, model.renderType(TEXTURE), false, stack.hasFoil()), combinedLight, combinedOverlay, -1);
-        matrixStack.popPose();
+        this.model.root().getExtentsForGui(new PoseStack(), output);
+    }
+
+    /** Data-driven special model definition. */
+    public record Unbaked() implements NoDataSpecialModelRenderer.Unbaked
+    {
+        public static final MapCodec<Unbaked> MAP_CODEC = MapCodec.unit(new Unbaked());
+
+        @Override
+        public MapCodec<Unbaked> type()
+        {
+            return MAP_CODEC;
+        }
+
+        @Override
+        public SpearItemTileEntityRenderer bake(final SpecialModelRenderer.BakingContext context)
+        {
+            return new SpearItemTileEntityRenderer(new SpearModel(context.entityModelSet().bakeLayer(ModelLayers.TRIDENT)));
+        }
     }
 }

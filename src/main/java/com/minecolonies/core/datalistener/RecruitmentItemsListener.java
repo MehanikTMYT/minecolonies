@@ -1,5 +1,7 @@
 package com.minecolonies.core.datalistener;
 
+import net.minecraft.util.ExtraCodecs;
+import net.minecraft.resources.FileToIdConverter;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -8,7 +10,7 @@ import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.MathUtils;
 import com.minecolonies.api.util.constant.ColonyConstants;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.GsonHelper;
@@ -26,7 +28,7 @@ import static com.minecolonies.core.generation.DataGeneratorConstants.COLONY_REC
 /**
  * Loads and listens to recruitment costs data.
  */
-public class RecruitmentItemsListener extends SimpleJsonResourceReloadListener
+public class RecruitmentItemsListener extends SimpleJsonResourceReloadListener<JsonElement>
 {
     /**
      * Base recruitment level.
@@ -59,19 +61,21 @@ public class RecruitmentItemsListener extends SimpleJsonResourceReloadListener
      */
     private static Map<Integer, List<RecruitCost>> RECRUIT_COSTS = new HashMap<>();
 
+    private static volatile Map<Integer, List<RecruitCostSpec>> pendingRecruitCosts = Map.of();
+
     /**
      *  Map of recruitLevel to boot tier.
      */
-    private static final Map<Integer, ItemStack> RARITY_TO_BOOT_MAP = Map.ofEntries(
-        Map.entry(1, new ItemStack(Items.LEATHER_BOOTS)),
-        Map.entry(2, new ItemStack(Items.LEATHER_BOOTS)),
-        Map.entry(3, new ItemStack(Items.GOLDEN_BOOTS)),
-        Map.entry(4, new ItemStack(Items.GOLDEN_BOOTS)),
-        Map.entry(5, new ItemStack(Items.IRON_BOOTS)),
-        Map.entry(6, new ItemStack(Items.IRON_BOOTS)),
-        Map.entry(7, new ItemStack(Items.DIAMOND_BOOTS)),
-        Map.entry(8, new ItemStack(Items.DIAMOND_BOOTS)),
-        Map.entry(9, new ItemStack(Items.NETHERITE_BOOTS))
+    private static final Map<Integer, Item> RARITY_TO_BOOT_MAP = Map.ofEntries(
+        Map.entry(1, Items.LEATHER_BOOTS),
+        Map.entry(2, Items.LEATHER_BOOTS),
+        Map.entry(3, Items.GOLDEN_BOOTS),
+        Map.entry(4, Items.GOLDEN_BOOTS),
+        Map.entry(5, Items.IRON_BOOTS),
+        Map.entry(6, Items.IRON_BOOTS),
+        Map.entry(7, Items.DIAMOND_BOOTS),
+        Map.entry(8, Items.DIAMOND_BOOTS),
+        Map.entry(9, Items.NETHERITE_BOOTS)
     );
 
     /**
@@ -79,7 +83,7 @@ public class RecruitmentItemsListener extends SimpleJsonResourceReloadListener
      */
     public RecruitmentItemsListener()
     {
-        super(GSON, COLONY_RECRUITMENT_ITEMS_DIR);
+        super(ExtraCodecs.JSON, FileToIdConverter.json(COLONY_RECRUITMENT_ITEMS_DIR));
     }
 
     /**
@@ -107,11 +111,11 @@ public class RecruitmentItemsListener extends SimpleJsonResourceReloadListener
 
     @Override
     protected void apply(
-        final @NotNull Map<ResourceLocation, JsonElement> jsonElementMap,
+        final @NotNull Map<Identifier, JsonElement> jsonElementMap,
         final @NotNull ResourceManager resourceManager,
         final @NotNull ProfilerFiller profiler)
     {
-        final Map<Integer, List<RecruitCost>> recruitCosts = new HashMap<>();
+        final Map<Integer, List<RecruitCostSpec>> recruitCosts = new HashMap<>();
 
         if (jsonElementMap.isEmpty())
         {
@@ -119,7 +123,7 @@ public class RecruitmentItemsListener extends SimpleJsonResourceReloadListener
             return;
         }
 
-        for (final Map.Entry<ResourceLocation, JsonElement> entry : jsonElementMap.entrySet())
+        for (final Map.Entry<Identifier, JsonElement> entry : jsonElementMap.entrySet())
         {
             if (!entry.getValue().isJsonObject())
             {
@@ -127,7 +131,7 @@ public class RecruitmentItemsListener extends SimpleJsonResourceReloadListener
             }
 
             final JsonObject object = entry.getValue().getAsJsonObject();
-            final Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(GsonHelper.getAsString(object, KEY_ITEM)));
+            final Item item = BuiltInRegistries.ITEM.getValue(Identifier.parse(GsonHelper.getAsString(object, KEY_ITEM)));
             final int rarity = GsonHelper.getAsInt(object, KEY_RARITY);
 
             if (item == Items.AIR)
@@ -145,7 +149,7 @@ public class RecruitmentItemsListener extends SimpleJsonResourceReloadListener
             final int count = BASE_ITEM_COUNT * (MAX_RARITY + 1 - rarity);
             final int recruitLevel = BASE_RECRUIT_LEVEL + rarity * rarity / 2;
             recruitCosts.putIfAbsent(rarity, new ArrayList<>());
-            recruitCosts.get(rarity).add(new RecruitCost(new ItemStack(item, count), recruitLevel, RARITY_TO_BOOT_MAP.get(rarity)));
+            recruitCosts.get(rarity).add(new RecruitCostSpec(item, count, recruitLevel, RARITY_TO_BOOT_MAP.get(rarity)));
         }
 
         for (int i = 1; i <= MAX_RARITY; i++)
@@ -156,6 +160,20 @@ public class RecruitmentItemsListener extends SimpleJsonResourceReloadListener
             }
         }
 
+        final Map<Integer, List<RecruitCostSpec>> immutableCosts = new HashMap<>();
+        recruitCosts.forEach((rarity, costs) -> immutableCosts.put(rarity, List.copyOf(costs)));
+        pendingRecruitCosts = Map.copyOf(immutableCosts);
+    }
+
+    /**
+     * Materialize recruitment stacks after default item components have been bound.
+     */
+    public static void bindPendingRecruitCosts()
+    {
+        final Map<Integer, List<RecruitCost>> recruitCosts = new HashMap<>();
+        pendingRecruitCosts.forEach((rarity, specs) -> recruitCosts.put(rarity, specs.stream()
+          .map(spec -> new RecruitCost(new ItemStack(spec.recruitItem(), spec.count()), spec.recruitLevel(), new ItemStack(spec.boots())))
+          .toList()));
         RECRUIT_COSTS = Collections.unmodifiableMap(recruitCosts);
     }
 
@@ -170,4 +188,8 @@ public class RecruitmentItemsListener extends SimpleJsonResourceReloadListener
         int recruitLevel,
         ItemStack boots)
     {}
+
+    private record RecruitCostSpec(Item recruitItem, int count, int recruitLevel, Item boots)
+    {
+    }
 }

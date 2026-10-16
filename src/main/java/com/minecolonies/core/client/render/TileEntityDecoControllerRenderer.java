@@ -3,90 +3,95 @@ package com.minecolonies.core.client.render;
 import com.minecolonies.core.blocks.BlockDecorationController;
 import com.minecolonies.core.tileentities.TileEntityDecorationController;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.block.BlockRenderDispatcher;
-import net.minecraft.client.renderer.block.ModelBlockRenderer;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.block.BlockModelResolver;
+import net.minecraft.client.renderer.block.model.BlockDisplayContext;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 
-@OnlyIn(Dist.CLIENT)
-public class TileEntityDecoControllerRenderer implements BlockEntityRenderer<BlockEntity>
+public class TileEntityDecoControllerRenderer implements BlockEntityRenderer<TileEntityDecorationController, DecoControllerRenderState>
 {
-    private BlockRenderDispatcher blockRenderer;
+    private static final BlockDisplayContext BLOCK_DISPLAY_CONTEXT = BlockDisplayContext.create();
 
-    public TileEntityDecoControllerRenderer(BlockEntityRendererProvider.Context p_173623_)
+    private final BlockModelResolver blockModelResolver;
+
+    public TileEntityDecoControllerRenderer(final BlockEntityRendererProvider.Context context)
     {
-        this.blockRenderer = p_173623_.getBlockRenderDispatcher();
+        this.blockModelResolver = context.blockModelResolver();
     }
 
     @Override
-    public void render(@NotNull BlockEntity blockEntity, float partialTick, @NotNull PoseStack matrixStack, @NotNull MultiBufferSource bufferSource, int lightA, int lightB)
+    public DecoControllerRenderState createRenderState()
     {
-        if (blockEntity instanceof TileEntityDecorationController decorationController)
-        {
-            Level level = blockEntity.getLevel();
-            if (level != null)
-            {
-                final BlockState decoController = decorationController.getBlockState();
-                final Direction direction = decoController.getValue(BlockDecorationController.FACING);
-                final BlockPos offsetPos = blockEntity.getBlockPos().relative(direction);
-                final BlockState state = level.getBlockState(offsetPos);
-                final VoxelShape shape = state.getShape(level, offsetPos);
-                if (shape.isEmpty() || Block.isShapeFullBlock(shape))
-                {
-                    ModelBlockRenderer.enableCaching();
-                    matrixStack.pushPose();
-
-                    this.renderBlock(offsetPos, decoController, matrixStack, bufferSource, level, lightA);
-
-                    matrixStack.popPose();
-                    ModelBlockRenderer.clearCache();
-                    return;
-                }
-
-                final Vec3 translateVec = switch (direction)
-                {
-                    case UP -> new Vec3(0, shape.min(Direction.Axis.Y), 0);
-                    case DOWN -> new Vec3(0, shape.max(Direction.Axis.Y)-1, 0);
-                    case NORTH -> new Vec3(0, 0, shape.max(Direction.Axis.Z)-1);
-                    case SOUTH -> new Vec3(0, 0, shape.min(Direction.Axis.Z));
-                    case EAST -> new Vec3( shape.min(Direction.Axis.X), 0, 0);
-                    case WEST -> new Vec3(shape.max(Direction.Axis.X)-1, 0, 0);
-                };
-
-                if (!decoController.isAir())
-                {
-                    ModelBlockRenderer.enableCaching();
-                    matrixStack.pushPose();
-                    matrixStack.translate(translateVec.x, translateVec.y, translateVec.z);
-
-                    this.renderBlock(offsetPos, decoController, matrixStack, bufferSource, level, lightB);
-
-                    matrixStack.popPose();
-                    ModelBlockRenderer.clearCache();
-                }
-            }
-        }
+        return new DecoControllerRenderState();
     }
 
-    private void renderBlock(BlockPos pos, BlockState state, PoseStack poseStack, MultiBufferSource buffer, Level level, int light)
+    @Override
+    public void extractRenderState(
+      final TileEntityDecorationController controller,
+      final DecoControllerRenderState state,
+      final float partialTicks,
+      final Vec3 cameraPosition,
+      final ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress)
     {
-        VertexConsumer vertexconsumer = buffer.getBuffer(RenderType.cutout());
-        this.blockRenderer.getModelRenderer()
-          .tesselateBlock(level, this.blockRenderer.getBlockModel(state), state, pos, poseStack, vertexconsumer, false, RandomSource.create(), state.getSeed(pos), light);
+        BlockEntityRenderer.super.extractRenderState(controller, state, partialTicks, cameraPosition, breakProgress);
+        final Level level = controller.getLevel();
+        final BlockState controllerState = controller.getBlockState();
+        if (level == null || controllerState.isAir())
+        {
+            state.render = false;
+            state.model.clear();
+            return;
+        }
+
+        final Direction direction = controllerState.getValue(BlockDecorationController.FACING);
+        final BlockPos offsetPos = controller.getBlockPos().relative(direction);
+        final BlockState adjacentState = level.getBlockState(offsetPos);
+        final VoxelShape shape = adjacentState.getShape(level, offsetPos);
+        state.translation = shape.isEmpty() || Block.isShapeFullBlock(shape) ? Vec3.ZERO : surfaceOffset(shape, direction);
+        state.render = true;
+        this.blockModelResolver.update(state.model, controllerState, BLOCK_DISPLAY_CONTEXT);
+    }
+
+    private static Vec3 surfaceOffset(final VoxelShape shape, final Direction direction)
+    {
+        return switch (direction)
+        {
+            case UP -> new Vec3(0, shape.min(Direction.Axis.Y), 0);
+            case DOWN -> new Vec3(0, shape.max(Direction.Axis.Y) - 1, 0);
+            case NORTH -> new Vec3(0, 0, shape.max(Direction.Axis.Z) - 1);
+            case SOUTH -> new Vec3(0, 0, shape.min(Direction.Axis.Z));
+            case EAST -> new Vec3(shape.min(Direction.Axis.X), 0, 0);
+            case WEST -> new Vec3(shape.max(Direction.Axis.X) - 1, 0, 0);
+        };
+    }
+
+    @Override
+    public void submit(
+      final DecoControllerRenderState state,
+      final PoseStack poseStack,
+      final SubmitNodeCollector submitNodeCollector,
+      final CameraRenderState camera)
+    {
+        if (!state.render)
+        {
+            return;
+        }
+
+        poseStack.pushPose();
+        poseStack.translate(state.translation.x, state.translation.y, state.translation.z);
+        state.model.submit(poseStack, submitNodeCollector, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
+        poseStack.popPose();
     }
 }

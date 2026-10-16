@@ -1,5 +1,7 @@
 package com.minecolonies.core.items;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 import com.ldtteam.structurize.blocks.ModBlocks;
 import com.ldtteam.structurize.placement.SimplePlacementContext;
 import com.ldtteam.structurize.placement.handlers.placement.IPlacementHandler;
@@ -33,7 +35,6 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -115,7 +116,7 @@ public class ItemAssistantHammer extends AbstractItemMinecolonies
                 final BuildAttemptResult buildAttemptResult = tryBuildingBlockNearby(player, view, workOrder, interactPos, handlers);
                 if (buildAttemptResult.areBlocksToBuildNearby() && !buildAttemptResult.didTryBuilding())
                 {
-                    player.displayClientMessage(Component.translatable("item.minecolonies.assistanthammer.noitems"), true);
+                    player.sendOverlayMessage(Component.translatable("item.minecolonies.assistanthammer.noitems"));
                 }
 
                 break;
@@ -124,7 +125,7 @@ public class ItemAssistantHammer extends AbstractItemMinecolonies
 
         if (unclaimed)
         {
-            player.displayClientMessage(Component.translatable("item.minecolonies.assistanthammer.onlyactive"), true);
+            player.sendOverlayMessage(Component.translatable("item.minecolonies.assistanthammer.onlyactive"));
         }
     }
 
@@ -143,7 +144,7 @@ public class ItemAssistantHammer extends AbstractItemMinecolonies
             final BuildingProgressStage stage = workOrder.getStage();
             if (stage == BuildingProgressStage.CLEAR || stage == BuildingProgressStage.CLEAR_NON_SOLIDS)
             {
-                player.displayClientMessage(Component.translatable("item.minecolonies.assistanthammer.notcleared"), true);
+                player.sendOverlayMessage(Component.translatable("item.minecolonies.assistanthammer.notcleared"));
                 player.inventoryMenu.broadcastFullState();
                 return;
             }
@@ -152,7 +153,7 @@ public class ItemAssistantHammer extends AbstractItemMinecolonies
             if (workOrder.getBlueprint() == null)
             {
                 workOrder.loadBlueprint(player.level(), b -> {});
-                player.displayClientMessage(Component.translatable("item.minecolonies.assistanthammer.notloaded"), true);
+                player.sendOverlayMessage(Component.translatable("item.minecolonies.assistanthammer.notloaded"));
                 player.inventoryMenu.broadcastFullState();
                 return;
             }
@@ -170,7 +171,7 @@ public class ItemAssistantHammer extends AbstractItemMinecolonies
             final BuildAttemptResult buildAttemptResult = tryBuildingBlockNearby(player, colony, workOrder, interactPos, handlers);
             if (buildAttemptResult.areBlocksToBuildNearby() && !buildAttemptResult.didTryBuilding())
             {
-                player.displayClientMessage(Component.translatable("item.minecolonies.assistanthammer.noitems"), true);
+                player.sendOverlayMessage(Component.translatable("item.minecolonies.assistanthammer.noitems"));
                 player.inventoryMenu.broadcastFullState();
             }
 
@@ -184,7 +185,7 @@ public class ItemAssistantHammer extends AbstractItemMinecolonies
     @Override
     public InteractionResult useOn(UseOnContext context)
     {
-        if (context.getLevel().isClientSide)
+        if (context.getLevel().isClientSide())
         {
             final BlockPos interactPos = context.getClickedPos().relative(context.getClickedFace());
             useOnBlock(context.getPlayer(), interactPos);
@@ -195,15 +196,15 @@ public class ItemAssistantHammer extends AbstractItemMinecolonies
 
     @NotNull
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand)
+    public InteractionResult use(Level level, Player player, InteractionHand hand)
     {
-        if (level.isClientSide)
+        if (level.isClientSide())
         {
             final BlockPos interactPos = BlockPos.containing(player.getEyePosition().add(player.getLookAngle().multiply(3, 3, 3)));
             useOnBlock(player, interactPos);
         }
 
-        return InteractionResultHolder.success(player.getMainHandItem());
+        return InteractionResult.SUCCESS.heldItemTransformedTo(player.getMainHandItem());
     }
 
     /**
@@ -223,7 +224,7 @@ public class ItemAssistantHammer extends AbstractItemMinecolonies
     {
         final BlockPos.MutableBlockPos workPos = new BlockPos.MutableBlockPos();
         boolean areBlocksToBuildNearby = false;
-        player.getCooldowns().addCooldown(this, 5);
+        player.getCooldowns().addCooldown(player.getItemInHand(InteractionHand.MAIN_HAND), 5);
 
         for (int currentDistance = 0; currentDistance <= reach; currentDistance++)
         {
@@ -286,8 +287,9 @@ public class ItemAssistantHammer extends AbstractItemMinecolonies
                             for (final ItemStack required : requiredItem)
                             {
                                 boolean found = false;
-                                for (final ItemStack stack : player.getInventory().items)
+                                for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++)
                                 {
+                                    final ItemStack stack = player.getInventory().getItem(slot);
                                     if (ItemStackUtils.compareItemStacksIgnoreStackSize(required, stack))
                                     {
                                         found = true;
@@ -333,7 +335,7 @@ public class ItemAssistantHammer extends AbstractItemMinecolonies
                         }
 
                         // Server message
-                        if (colony.getWorld().isClientSide)
+                        if (colony.getWorld().isClientSide())
                         {
                             new PlayerAssistantBuildRequestMessage(colony, workOrder.getID(), interactPos).sendToServer();
                         }
@@ -410,9 +412,13 @@ public class ItemAssistantHammer extends AbstractItemMinecolonies
         boolean didTryBuilding) {}
 
     @Override
-    public void appendHoverText(@NotNull final ItemStack stack, @Nullable final TooltipContext ctx, @NotNull final List<Component> tooltipList, @NotNull final TooltipFlag flagIn)
+    public void appendHoverText(@NotNull final ItemStack stack,
+      @Nullable final TooltipContext ctx,
+      @NotNull final TooltipDisplay display,
+      @NotNull final Consumer<Component> tooltipList,
+      @NotNull final TooltipFlag flagIn)
     {
-        tooltipList.add(Component.translatable("item.minecolonies.assistanthammer.reach", reach).withStyle(ChatFormatting.BLUE));
-        tooltipList.add(Component.translatable("item.minecolonies.assistanthammer.desc").withStyle(ChatFormatting.ITALIC).withStyle(ChatFormatting.GRAY));
+        tooltipList.accept(Component.translatable("item.minecolonies.assistanthammer.reach", reach).withStyle(ChatFormatting.BLUE));
+        tooltipList.accept(Component.translatable("item.minecolonies.assistanthammer.desc").withStyle(ChatFormatting.ITALIC).withStyle(ChatFormatting.GRAY));
     }
 }

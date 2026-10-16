@@ -1,5 +1,6 @@
 package com.minecolonies.core.entity.pathfinding.pathjobs;
 
+import net.minecraft.world.level.block.LilyPadBlock;
 import com.ldtteam.domumornamentum.block.decorative.FloatingCarpetBlock;
 import com.ldtteam.domumornamentum.block.decorative.PanelBlock;
 import com.ldtteam.domumornamentum.block.decorative.ShingleBlock;
@@ -765,7 +766,7 @@ public abstract class AbstractPathJob implements Callable<Path>, IPathJob
             newY = getGroundHeight(node, nextX, nextY, nextZ);
         }
 
-        if (newY < world.getMinBuildHeight())
+        if (newY < world.getMinY())
         {
             return;
         }
@@ -1501,7 +1502,7 @@ public abstract class AbstractPathJob implements Callable<Path>, IPathJob
         if (ShapeUtil.isEmpty(shape) || ShapeUtil.max(shape, Direction.Axis.Y) <= 0.1)
         {
             return !head
-                     || !(state.getBlock() instanceof WoolCarpetBlock || state.getBlock() instanceof FloatingCarpetBlock || state.getBlock() instanceof WaterlilyBlock)
+                     || !(state.getBlock() instanceof WoolCarpetBlock || state.getBlock() instanceof FloatingCarpetBlock || state.getBlock() instanceof LilyPadBlock)
                      || PathfindingUtils.isLadder(state, pathingOptions);
         }
         return isPassable(state, x, y, z, parent, head);
@@ -1725,7 +1726,7 @@ public abstract class AbstractPathJob implements Callable<Path>, IPathJob
                 }
             }
         }
-        else if (parentBlock instanceof FloatingCarpetBlock || parentBlock instanceof WaterlilyBlock)
+        else if (parentBlock instanceof FloatingCarpetBlock || parentBlock instanceof LilyPadBlock)
         {
             if (dY < 0)
             {

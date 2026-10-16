@@ -10,16 +10,23 @@ import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.api.util.constant.translation.ToolTranslationConstants;
 import com.minecolonies.apiimp.CommonMinecoloniesAPIImpl;
 import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.*;
+import net.minecraft.world.item.component.Tool;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.common.ItemAbilities;
 import net.neoforged.neoforge.common.ItemAbility;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -59,7 +66,7 @@ public class ModEquipmentTypes
 
         pickaxe = register("pickaxe",
           builder -> builder.setDisplayName(Component.translatable(ToolTranslationConstants.TOOL_TYPE_PICKAXE))
-                       .setIsEquipment((itemStack, equipmentType) -> canPerformDefaultActions(itemStack, ItemAbilities.DEFAULT_PICKAXE_ACTIONS) || Compatibility.isTinkersTool(
+                       .setIsEquipment((itemStack, equipmentType) -> canPerformDefaultActions(itemStack, Set.of(ItemAbility.get("pickaxe_dig"))) || Compatibility.isTinkersTool(
                          itemStack,
                          equipmentType))
                        .setEquipmentLevel(ModEquipmentTypes::vanillaToolLevel)
@@ -89,7 +96,7 @@ public class ModEquipmentTypes
 
         sword = register("sword",
           builder -> builder.setDisplayName(Component.translatable(ToolTranslationConstants.TOOL_TYPE_SWORD))
-                       .setIsEquipment((itemStack, equipmentType) -> canPerformDefaultActions(itemStack, ItemAbilities.DEFAULT_SWORD_ACTIONS)
+                       .setIsEquipment((itemStack, equipmentType) -> canPerformDefaultActions(itemStack, Set.of(ItemAbility.get("sword_dig"), ItemAbility.get("sword_sweep")))
                                                                      || Compatibility.isTinkersWeapon(itemStack)
                                                                      || Compatibility.isCustomWeapon(itemStack))
                        .setEquipmentLevel(ModEquipmentTypes::vanillaToolLevel)
@@ -121,31 +128,31 @@ public class ModEquipmentTypes
 
         shield = register("shield",
           builder -> builder.setDisplayName(Component.translatable(ToolTranslationConstants.TOOL_TYPE_SHIELD))
-                       .setIsEquipment((itemStack, equipmentType) -> canPerformDefaultActions(itemStack, ItemAbilities.DEFAULT_SHIELD_ACTIONS))
+                       .setIsEquipment((itemStack, equipmentType) -> canPerformDefaultActions(itemStack, Set.of(ItemAbility.get("shield_block"))))
                        .setEquipmentLevel((itemStack, equipmentType) -> Compatibility.getItemLevel(itemStack))
                   .build());
 
         helmet = register("helmet",
           builder -> builder.setDisplayName(Component.translatable(ToolTranslationConstants.TOOL_TYPE_HELMET))
-                       .setIsEquipment((itemStack, equipmentType) -> itemStack.getItem() instanceof ArmorItem armor && EquipmentSlot.HEAD.equals(armor.getEquipmentSlot()))
+                       .setIsEquipment((itemStack, equipmentType) -> ItemStackUtils.isArmorForSlot(itemStack, EquipmentSlot.HEAD))
                        .setEquipmentLevel((itemStack, equipmentType) -> Compatibility.getItemLevel(itemStack))
                   .build());
 
         leggings = register("leggings",
           builder -> builder.setDisplayName(Component.translatable(ToolTranslationConstants.TOOL_TYPE_LEGGINGS))
-                       .setIsEquipment((itemStack, equipmentType) -> itemStack.getItem() instanceof ArmorItem armor && EquipmentSlot.LEGS.equals(armor.getEquipmentSlot()))
+                       .setIsEquipment((itemStack, equipmentType) -> ItemStackUtils.isArmorForSlot(itemStack, EquipmentSlot.LEGS))
                        .setEquipmentLevel((itemStack, equipmentType) -> Compatibility.getItemLevel(itemStack))
                   .build());
 
         chestplate = register("chestplate",
           builder -> builder.setDisplayName(Component.translatable(ToolTranslationConstants.TOOL_TYPE_CHEST_PLATE))
-                       .setIsEquipment((itemStack, equipmentType) -> itemStack.getItem() instanceof ArmorItem armor && EquipmentSlot.CHEST.equals(armor.getEquipmentSlot()))
+                       .setIsEquipment((itemStack, equipmentType) -> ItemStackUtils.isArmorForSlot(itemStack, EquipmentSlot.CHEST))
                        .setEquipmentLevel((itemStack, equipmentType) -> Compatibility.getItemLevel(itemStack))
                   .build());
 
         boots = register("boots",
           builder -> builder.setDisplayName(Component.translatable(ToolTranslationConstants.TOOL_TYPE_BOOTS))
-                       .setIsEquipment((itemStack, equipmentType) -> itemStack.getItem() instanceof ArmorItem armor && EquipmentSlot.FEET.equals(armor.getEquipmentSlot()))
+                       .setIsEquipment((itemStack, equipmentType) -> ItemStackUtils.isArmorForSlot(itemStack, EquipmentSlot.FEET))
                        .setEquipmentLevel((itemStack, equipmentType) -> Compatibility.getItemLevel(itemStack))
                   .build());
 
@@ -189,7 +196,7 @@ public class ModEquipmentTypes
     private static DeferredHolder<EquipmentTypeEntry, EquipmentTypeEntry> register(final String id, final Consumer<EquipmentTypeEntry.Builder> consumer)
     {
         EquipmentTypeEntry.Builder equipmentType = new EquipmentTypeEntry.Builder()
-                                           .setRegistryName(new ResourceLocation(Constants.MOD_ID, id));
+                                           .setRegistryName(Identifier.fromNamespaceAndPath(Constants.MOD_ID, id));
         consumer.accept(equipmentType);
         return DEFERRED_REGISTER.register(id, equipmentType::build);
     }
@@ -260,11 +267,12 @@ public class ModEquipmentTypes
             {
                 final ItemStack dummy = new ItemStack(item);
 
-                if (item instanceof final TieredItem tiered)
+                final ToolMaterial material = getToolMaterial(dummy);
+                if (material != null)
                 {
-                    Compatibility.registerItemTierIfAbsent(item, tiered.getTier(), (int) tiered.getTier().getAttackDamageBonus());
+                    Compatibility.registerItemTierIfAbsent(item, material, (int) material.attackDamageBonus());
                 }
-                else if (item instanceof ArmorItem)
+                else if (ItemStackUtils.isArmor(dummy))
                 {
                     final int level = ItemStackUtils.getArmorLevel(dummy);
                     if (level > 0)
@@ -284,7 +292,7 @@ public class ModEquipmentTypes
                 {
                     Compatibility.registerItemTierIfAbsent(item, durabilityBasedLevel(dummy, shearsRef));
                 }
-                else if (canPerformDefaultActions(dummy, ItemAbilities.DEFAULT_SHIELD_ACTIONS))
+                else if (canPerformDefaultActions(dummy, Set.of(ItemAbility.get("shield_block"))))
                 {
                     Compatibility.registerItemTierIfAbsent(item, durabilityBasedLevel(dummy, shieldRef));
                 }
@@ -298,6 +306,51 @@ public class ModEquipmentTypes
                 Log.getLogger().error("Failed to register equipment tiers for item: " + BuiltInRegistries.ITEM.getKey(item), e);
             }
         }
+    }
+
+    /**
+     * All vanilla tool materials, used to recognize the tier of an arbitrary tool.
+     */
+    private static final ToolMaterial[] VANILLA_TOOL_MATERIALS =
+      {ToolMaterial.WOOD, ToolMaterial.STONE, ToolMaterial.COPPER, ToolMaterial.IRON, ToolMaterial.DIAMOND, ToolMaterial.GOLD, ToolMaterial.NETHERITE};
+
+    /**
+     * Determine the tool material of a stack from its {@link Tool} component.
+     * <p>
+     * Replaces the removed vanilla {@code TieredItem} class: the tier of a tool is only expressed through the block tag
+     * the tool is denied drops for, so the stack is matched back against the vanilla materials by that tag.
+     *
+     * @param stack the stack to inspect.
+     * @return the matching vanilla tool material, or null if the stack is not a tiered tool.
+     */
+    @Nullable
+    private static ToolMaterial getToolMaterial(final ItemStack stack)
+    {
+        final Tool tool = stack.get(DataComponents.TOOL);
+        if (tool == null)
+        {
+            return null;
+        }
+
+        for (final Tool.Rule rule : tool.rules())
+        {
+            if (!rule.correctForDrops().orElse(true))
+            {
+                final Optional<TagKey<Block>> deniedTag = rule.blocks().unwrapKey();
+                if (deniedTag.isPresent())
+                {
+                    for (final ToolMaterial material : VANILLA_TOOL_MATERIALS)
+                    {
+                        if (material.incorrectBlocksForDrops().equals(deniedTag.get()))
+                        {
+                            return material;
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

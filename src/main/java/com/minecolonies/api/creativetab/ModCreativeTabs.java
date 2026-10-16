@@ -1,5 +1,7 @@
 package com.minecolonies.api.creativetab;
 
+import java.util.stream.Stream;
+import java.util.Optional;
 import com.minecolonies.api.blocks.AbstractBlockHut;
 import com.minecolonies.api.blocks.AbstractColonyBlock;
 import com.minecolonies.api.blocks.ModBlocks;
@@ -119,32 +121,29 @@ public final class ModCreativeTabs
           output.accept(ModItems.goldenBread);
           output.accept(ModItems.chorusBread);
 
-          if (SpawnEggItem.byId(ModEntities.CAMP_BARBARIAN) != null)
-          {
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_BARBARIAN));
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_ARCHERBARBARIAN));
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_CHIEFBARBARIAN));
-
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_PIRATE));
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_ARCHERPIRATE));
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_CHIEFPIRATE));
-
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_MUMMY));
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_ARCHERMUMMY));
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_PHARAO));
-
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_SHIELDMAIDEN));
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_NORSEMEN_ARCHER));
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_NORSEMEN_CHIEF));
-
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_AMAZON));
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_AMAZONSPEARMAN));
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_AMAZONCHIEF));
-
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_DROWNED_PIRATE));
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_DROWNED_ARCHERPIRATE));
-                output.accept(SpawnEggItem.byId(ModEntities.CAMP_DROWNED_CHIEFPIRATE));
-          }
+          // Spawn eggs are only present once the matching entity type is registered.
+          Stream.of(
+            ModEntities.CAMP_BARBARIAN,
+            ModEntities.CAMP_ARCHERBARBARIAN,
+            ModEntities.CAMP_CHIEFBARBARIAN,
+            ModEntities.CAMP_PIRATE,
+            ModEntities.CAMP_ARCHERPIRATE,
+            ModEntities.CAMP_CHIEFPIRATE,
+            ModEntities.CAMP_MUMMY,
+            ModEntities.CAMP_ARCHERMUMMY,
+            ModEntities.CAMP_PHARAO,
+            ModEntities.CAMP_SHIELDMAIDEN,
+            ModEntities.CAMP_NORSEMEN_ARCHER,
+            ModEntities.CAMP_NORSEMEN_CHIEF,
+            ModEntities.CAMP_AMAZON,
+            ModEntities.CAMP_AMAZONSPEARMAN,
+            ModEntities.CAMP_AMAZONCHIEF,
+            ModEntities.CAMP_DROWNED_PIRATE,
+            ModEntities.CAMP_DROWNED_ARCHERPIRATE,
+            ModEntities.CAMP_DROWNED_CHIEFPIRATE)
+            .map(SpawnEggItem::byId)
+            .flatMap(Optional::stream)
+            .forEach(egg -> output.accept(egg.value()));
 
       }).build());
 

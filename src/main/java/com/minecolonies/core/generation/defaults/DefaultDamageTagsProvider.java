@@ -5,23 +5,22 @@ import com.minecolonies.api.util.constant.Constants;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.PackOutput;
-import net.minecraft.data.tags.TagsProvider;
+import net.minecraft.data.tags.DamageTypeTagsProvider;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageType;
-import net.neoforged.neoforge.common.data.ExistingFileHelper;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
 
 
 @SuppressWarnings("unchecked")
-public class DefaultDamageTagsProvider extends TagsProvider<DamageType>
+public class DefaultDamageTagsProvider extends DamageTypeTagsProvider
 {
     public DefaultDamageTagsProvider(
       @NotNull final PackOutput output,
-      final CompletableFuture<HolderLookup.Provider> lookupProvider, final ExistingFileHelper helper)
+      final CompletableFuture<HolderLookup.Provider> lookupProvider)
     {
-        super(output, Registries.DAMAGE_TYPE, lookupProvider, Constants.MOD_ID, helper);
+        super(output, lookupProvider, Constants.MOD_ID);
     }
 
     @Override

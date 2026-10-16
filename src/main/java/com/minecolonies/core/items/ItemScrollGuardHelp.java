@@ -1,5 +1,7 @@
 package com.minecolonies.core.items;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.buildings.IBuilding;
@@ -26,9 +28,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.animal.horse.Llama;
+import net.minecraft.world.entity.animal.equine.Llama;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
@@ -72,15 +75,15 @@ public class ItemScrollGuardHelp extends AbstractItemScroll
         final IColony colony = building.getColony();
         final List<ICitizenData> guards = new ArrayList<>(building.getAllAssignedCitizen());
 
-        if (world.random.nextInt(10) == 0 || colony.getWorld() != world)
+        if (world.getRandom().nextInt(10) == 0 || colony.getWorld() != world)
         {
             // Fail
-            final Llama entity = EntityType.LLAMA.create(world);
+            final Llama entity = EntityType.LLAMA.create(world, EntitySpawnReason.SPAWN_ITEM_USE);
             entity.setPos(player.getX(), player.getY(), player.getZ());
             world.addFreshEntity(entity);
 
-            player.displayClientMessage(Component.translatableEscape("minecolonies.scroll.failed" + (world.random.nextInt(FAIL_RESPONSES_TOTAL) + 1)).setStyle(Style.EMPTY.withColor(
-              ChatFormatting.GOLD)), true);
+            player.sendOverlayMessage(Component.translatableEscape("minecolonies.scroll.failed" + (world.getRandom().nextInt(FAIL_RESPONSES_TOTAL) + 1)).setStyle(Style.EMPTY.withColor(
+              ChatFormatting.GOLD)));
 
             SoundUtils.playSoundForPlayer(player, SoundEvents.EVOKER_CAST_SPELL, 0.5f, 1.0f);
             return itemStack;
@@ -159,7 +162,7 @@ public class ItemScrollGuardHelp extends AbstractItemScroll
     {
         final InteractionResult result = super.useOn(ctx);
 
-        if (ctx.getLevel().isClientSide)
+        if (ctx.getLevel().isClientSide())
         {
             return result;
         }
@@ -180,7 +183,7 @@ public class ItemScrollGuardHelp extends AbstractItemScroll
     @Override
     public void onUseTick(Level worldIn, LivingEntity entity, ItemStack stack, int count)
     {
-        if (!worldIn.isClientSide && worldIn.getGameTime() % 5 == 0)
+        if (!worldIn.isClientSide() && worldIn.getGameTime() % 5 == 0)
         {
             final Entity entity1 = entity;
             new VanillaParticleMessage(entity.getX(), entity.getY(), entity.getZ(), ParticleTypes.ENCHANT).sendToTrackingEntity(entity1);
@@ -189,11 +192,15 @@ public class ItemScrollGuardHelp extends AbstractItemScroll
     }
 
     @Override
-    public void appendHoverText(@NotNull final ItemStack stack, @Nullable final TooltipContext ctx, @NotNull final List<Component> tooltip, @NotNull final TooltipFlag flagIn)
+    public void appendHoverText(@NotNull final ItemStack stack,
+      @Nullable final TooltipContext ctx,
+      @NotNull final TooltipDisplay display,
+      @NotNull final Consumer<Component> tooltip,
+      @NotNull final TooltipFlag flagIn)
     {
         final MutableComponent guiHint = Component.translatableEscape("item.minecolonies.scroll_guard_help.tip");
         guiHint.setStyle(Style.EMPTY.withColor(ChatFormatting.DARK_GREEN));
-        tooltip.add(guiHint);
+        tooltip.accept(guiHint);
 
         String colonyDesc = Component.translatableEscape("item.minecolonies.scroll.colony.none").getString();
 
@@ -205,6 +212,6 @@ public class ItemScrollGuardHelp extends AbstractItemScroll
 
         final MutableComponent guiHint2 = Component.translatableEscape("item.minecolonies.scroll.colony.tip", colonyDesc);
         guiHint2.setStyle(Style.EMPTY.withColor(ChatFormatting.GOLD));
-        tooltip.add(guiHint2);
+        tooltip.accept(guiHint2);
     }
 }

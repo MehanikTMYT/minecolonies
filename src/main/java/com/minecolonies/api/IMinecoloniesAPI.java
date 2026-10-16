@@ -32,6 +32,7 @@ import com.minecolonies.api.research.IGlobalResearchTree;
 import com.minecolonies.api.research.ModResearchEffects;
 import com.minecolonies.api.research.ModResearchRequirements;
 import net.minecraft.core.Registry;
+import net.minecraft.core.BlockPos;
 import net.neoforged.neoforge.registries.NewRegistryEvent;
 
 public interface IMinecoloniesAPI
@@ -105,4 +106,6 @@ public interface IMinecoloniesAPI
     Registry<EquipmentTypeEntry> getEquipmentTypeRegistry();
 
     EventBus getEventBus();
+
+    void openReactivationWindow(BlockPos pos);
 }

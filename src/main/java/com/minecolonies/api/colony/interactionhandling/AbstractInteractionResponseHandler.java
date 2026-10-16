@@ -3,12 +3,14 @@ package com.minecolonies.api.colony.interactionhandling;
 import com.google.common.collect.ImmutableList;
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.util.Tuple;
+import com.minecolonies.api.util.Utils;
 import com.minecolonies.api.util.constant.NbtTagConstants;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -103,13 +105,13 @@ public abstract class AbstractInteractionResponseHandler implements IInteraction
     public CompoundTag serializeNBT(@NotNull final HolderLookup.Provider provider)
     {
         final CompoundTag tag = new CompoundTag();
-        tag.putString(TAG_INQUIRY, Component.Serializer.toJson(this.inquiry, provider));
+        tag.put(TAG_INQUIRY, Utils.serializeCodecMess(ComponentSerialization.CODEC, provider, this.inquiry));
         final ListTag list = new ListTag();
         for (final Map.Entry<Component, Component> element : responses.entrySet())
         {
             final CompoundTag elementTag = new CompoundTag();
-            elementTag.putString(TAG_RESPONSE, Component.Serializer.toJson(element.getKey(), provider));
-            elementTag.putString(TAG_NEXT_INQUIRY, Component.Serializer.toJson(element.getValue(), provider));
+            elementTag.put(TAG_RESPONSE, Utils.serializeCodecMess(ComponentSerialization.CODEC, provider, element.getKey()));
+            elementTag.put(TAG_NEXT_INQUIRY, Utils.serializeCodecMess(ComponentSerialization.CODEC, provider, element.getValue()));
 
             list.add(elementTag);
         }
@@ -125,15 +127,17 @@ public abstract class AbstractInteractionResponseHandler implements IInteraction
      */
     public void deserializeNBT(@NotNull final HolderLookup.Provider provider, @NotNull final CompoundTag compoundNBT)
     {
-        this.inquiry = Component.Serializer.fromJson(compoundNBT.getString(TAG_INQUIRY), provider);
-        final ListTag list = compoundNBT.getList(TAG_RESPONSES, Tag.TAG_COMPOUND);
+        this.inquiry = Utils.deserializeCodecMess(ComponentSerialization.CODEC, provider, compoundNBT.get(TAG_INQUIRY));
+        final ListTag list = compoundNBT.getListOrEmpty(TAG_RESPONSES);
         for (int i = 0; i < list.size(); i++)
         {
-            final CompoundTag nbt = list.getCompound(i);
-            this.responses.put(Component.Serializer.fromJson(nbt.getString(TAG_RESPONSE), provider), Component.Serializer.fromJson(nbt.getString(TAG_NEXT_INQUIRY), provider));
+            final CompoundTag nbt = list.getCompoundOrEmpty(i);
+            this.responses.put(
+              Utils.deserializeCodecMess(ComponentSerialization.CODEC, provider, nbt.get(TAG_RESPONSE)),
+              Utils.deserializeCodecMess(ComponentSerialization.CODEC, provider, nbt.get(TAG_NEXT_INQUIRY)));
         }
-        this.primary = compoundNBT.getBoolean(TAG_PRIMARY);
-        this.priority = ChatPriority.values()[compoundNBT.getInt(TAG_PRIORITY)];
+        this.primary = compoundNBT.getBooleanOr(TAG_PRIMARY, false);
+        this.priority = ChatPriority.values()[compoundNBT.getIntOr(TAG_PRIORITY, 0)];
     }
 
     @Override

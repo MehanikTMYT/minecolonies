@@ -1,5 +1,7 @@
 package com.minecolonies.core.items;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 import com.minecolonies.api.util.constant.TranslationConstants;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.TooltipFlag;
@@ -9,6 +11,9 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.consume_effects.ApplyStatusEffectsConsumeEffect;
+import net.minecraft.world.item.component.Consumables;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.ChatFormatting;
@@ -27,10 +32,9 @@ public class ItemSugaryBread extends ItemFood
     /**
      * Setup the food definition
      */
-    private static FoodProperties sweetBread = (new FoodProperties.Builder())
+    public static final FoodProperties sweetBread = (new FoodProperties.Builder())
                                         .nutrition(6)
                                         .saturationModifier(0.7F)
-                                        .effect(() -> new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 600), 1.0F)
                                         .build(); 
 
     /**
@@ -40,7 +44,11 @@ public class ItemSugaryBread extends ItemFood
      */
     public ItemSugaryBread(final Properties properties)
     {
-        super((new Item.Properties()).food(sweetBread), 1);
+        super(properties
+                .food(sweetBread)
+                .component(DataComponents.CONSUMABLE, Consumables.defaultFood()
+                  .onConsume(new ApplyStatusEffectsConsumeEffect(new MobEffectInstance(MobEffects.SPEED, 600), 1.0F))
+                  .build()), 1);
     }
 
    /**
@@ -49,7 +57,7 @@ public class ItemSugaryBread extends ItemFood
     @Override
     public ItemStack finishUsingItem(ItemStack stack, Level worldIn, LivingEntity entityLiving) {
 
-        if (!worldIn.isClientSide)
+        if (!worldIn.isClientSide())
         {
             entityLiving.removeEffect(MobEffects.POISON);
         }
@@ -58,13 +66,16 @@ public class ItemSugaryBread extends ItemFood
     }    
     
     @Override
-    public void appendHoverText(
-    @NotNull final ItemStack stack, @Nullable final TooltipContext ctx, @NotNull final List<Component> tooltip, @NotNull final TooltipFlag flagIn)
+    public void appendHoverText(@NotNull final ItemStack stack,
+      @Nullable final TooltipContext ctx,
+      @NotNull final TooltipDisplay display,
+      @NotNull final Consumer<Component> tooltip,
+      @NotNull final TooltipFlag flagIn)
     {
         final MutableComponent guiHint = Component.translatableEscape(TranslationConstants.COM_MINECOLONIES_COREMOD_SUGARY_BREAD_TOOLTIP_GUI);
         guiHint.setStyle(Style.EMPTY.withColor(ChatFormatting.GRAY));
-        tooltip.add(guiHint);
+        tooltip.accept(guiHint);
 
-        super.appendHoverText(stack, ctx, tooltip, flagIn);
+        super.appendHoverText(stack, ctx, display, tooltip, flagIn);
     }
 }

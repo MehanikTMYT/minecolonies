@@ -31,6 +31,7 @@ import com.minecolonies.api.research.IGlobalResearchTree;
 import com.minecolonies.api.research.ModResearchEffects;
 import com.minecolonies.api.research.ModResearchRequirements;
 import net.minecraft.core.Registry;
+import net.minecraft.core.BlockPos;
 import net.neoforged.neoforge.registries.NewRegistryEvent;
 
 public final class MinecoloniesAPIProxy implements IMinecoloniesAPI
@@ -51,6 +52,12 @@ public final class MinecoloniesAPIProxy implements IMinecoloniesAPI
     public void setApiInstance(final IMinecoloniesAPI apiInstance)
     {
         this.apiInstance = apiInstance;
+    }
+
+    @Override
+    public void openReactivationWindow(final BlockPos pos)
+    {
+        apiInstance.openReactivationWindow(pos);
     }
 
     @Override

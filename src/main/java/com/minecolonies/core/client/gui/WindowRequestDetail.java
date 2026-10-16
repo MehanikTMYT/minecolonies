@@ -18,7 +18,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -33,7 +33,7 @@ import static com.minecolonies.core.colony.requestsystem.requests.AbstractReques
  */
 public class WindowRequestDetail extends AbstractWindowSkeleton implements ButtonHandler
 {
-    public static final ResourceLocation WINDOW_ID = new ResourceLocation(Constants.MOD_ID, "gui/windowrequestdetail.xml");
+    public static final Identifier WINDOW_ID = Identifier.fromNamespaceAndPath(Constants.MOD_ID, "gui/windowrequestdetail.xml");
 
     /**
      * ID of the requester label.
@@ -152,7 +152,7 @@ public class WindowRequestDetail extends AbstractWindowSkeleton implements Butto
                 return;
             }
 
-            findPaneOfTypeByID(RESOLVER, Text.class).setText(Component.literal("Resolver: " + resolver.getRequesterDisplayName(colony.getRequestManager(), request).getString()));
+            findPaneOfTypeByID(RESOLVER, Text.class).setText(Component.translatable("com.minecolonies.port26.ui.request.resolver", resolver.getRequesterDisplayName(colony.getRequestManager(), request).getString()));
         }
         catch (final IllegalArgumentException e)
         {
@@ -167,7 +167,7 @@ public class WindowRequestDetail extends AbstractWindowSkeleton implements Butto
     public void onUpdate()
     {
         super.onUpdate();
-        if (!Screen.hasShiftDown())
+        if (!Minecraft.getInstance().hasShiftDown())
         {
             lifeCount++;
         }
@@ -193,12 +193,9 @@ public class WindowRequestDetail extends AbstractWindowSkeleton implements Butto
     @Override
     public void onButtonClicked(@NotNull final Button button)
     {
-        if (button.getID().equals(REQUEST_FULFILL))
+        if (button.getID().equals(REQUEST_FULFILL) && requestTreeWindowModule.isFulfillable(request))
         {
-            if (requestTreeWindowModule instanceof final RequestTreeWindowModule.IRequestTreeSupportsFulfill requestTreeSupportsFulfill)
-            {
-                requestTreeSupportsFulfill.onFulfill(request);
-            }
+            requestTreeWindowModule.onFulfill(request);
             this.window.close();
         }
         else if (button.getID().equals(REQUEST_CANCEL))

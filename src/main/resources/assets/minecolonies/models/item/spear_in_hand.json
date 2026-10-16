@@ -2,7 +2,7 @@
     "parent": "builtin/entity",
     "gui_light": "front",
     "textures": {
-        "particle": "#spear"
+        "particle": "minecolonies:item/spear"
     },
   "display": {
     "thirdperson_righthand": {

@@ -1,7 +1,8 @@
 package com.minecolonies.core.client.model.raiders;
 
+import org.jetbrains.annotations.NotNull;
+import com.minecolonies.core.client.render.mobs.RaiderRenderState;
 import com.minecolonies.api.client.render.modeltype.EgyptianModel;
-import com.minecolonies.api.entity.mobs.AbstractEntityMinecoloniesMonster;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.*;
@@ -11,7 +12,7 @@ import net.minecraft.util.Mth;
 /**
  * Create a mummy model. Created using Tabula 7.0.0
  */
-public class ModelMummy extends EgyptianModel<AbstractEntityMinecoloniesMonster>
+public class ModelMummy extends EgyptianModel
 {
     private ModelPart stripRightA;
     private ModelPart stripRightB;
@@ -106,10 +107,10 @@ public class ModelMummy extends EgyptianModel<AbstractEntityMinecoloniesMonster>
     }
 
     @Override
-    public void setupAnim(AbstractEntityMinecoloniesMonster entityIn, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch)
+    public void setupAnim(@NotNull final RaiderRenderState state)
     {
-        super.setupAnim(entityIn, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
-        float f = 0.05F * Mth.sin((float) Math.PI * ageInTicks / 30.0F) % 2.0F;
+        super.setupAnim(state);
+        float f = 0.05F * Mth.sin((float) Math.PI * state.ageInTicks / 30.0F) % 2.0F;
         setRotateAngle(this.stripLeftA,
           -1.1F * this.leftArm.xRot + f,
           -this.leftArm.yRot,

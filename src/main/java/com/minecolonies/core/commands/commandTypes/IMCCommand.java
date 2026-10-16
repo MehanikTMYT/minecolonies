@@ -1,5 +1,7 @@
 package com.minecolonies.core.commands.commandTypes;
 
+import net.minecraft.server.permissions.Permissions;
+import net.minecraft.server.players.NameAndId;
 import com.minecolonies.api.util.Log;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -86,7 +88,7 @@ public interface IMCCommand
      */
     default boolean checkPreCondition(final CommandContext<CommandSourceStack> context)
     {
-        return context.getSource().getEntity() instanceof Player || context.getSource().hasPermission(OP_PERM_LEVEL);
+        return context.getSource().getEntity() instanceof Player || context.getSource().permissions().hasPermission(Permissions.COMMANDS_OWNER);
     }
 
     /**
@@ -106,12 +108,12 @@ public interface IMCCommand
 
     static boolean isPlayerOped(final Player player)
     {
-        if (player.getServer() == null)
+        if (player.level().getServer() == null)
         {
             return false;
         }
 
-        return player.getServer().getPlayerList().isOp(player.getGameProfile());
+        return player.level().getServer().getPlayerList().isOp(new NameAndId(player.getGameProfile()));
     }
 
     @FunctionalInterface

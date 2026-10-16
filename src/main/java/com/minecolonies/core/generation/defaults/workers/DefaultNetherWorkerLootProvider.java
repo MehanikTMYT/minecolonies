@@ -12,7 +12,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.loot.LootTableProvider;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -43,19 +43,26 @@ public class DefaultNetherWorkerLootProvider extends CustomRecipeAndLootTablePro
     public static final String NETHERWORKER = ModJobs.NETHERWORKER_ID.getPath();
     private static final int MAX_BUILDING_LEVEL = 5;
 
-    private final List<LootTable.Builder> levels;
+    private final List<LootTable.Builder> levels = new ArrayList<>();
 
     public DefaultNetherWorkerLootProvider(@NotNull final PackOutput packOutput,
                                            @NotNull final CompletableFuture<HolderLookup.Provider> providerFuture)
     {
         super(packOutput, providerFuture);
+    }
 
-        levels = new ArrayList<>();
+    @NotNull
+    @Override
+    protected CompletableFuture<?> generate(@NotNull final HolderLookup.Provider provider)
+    {
+        this.provider = provider;
 
         for (int buildingLevel = 1; buildingLevel <= MAX_BUILDING_LEVEL; ++buildingLevel)
         {
             levels.add(createTripLoot(buildingLevel));
         }
+
+        return CompletableFuture.completedFuture(provider);
     }
 
     private LootTable.Builder createTripLoot(final int buildingLevel)
@@ -230,7 +237,7 @@ public class DefaultNetherWorkerLootProvider extends CustomRecipeAndLootTablePro
 
             final List<LootTableAnalyzer.LootDrop> drops = LootTableAnalyzer.toDrops(provider, Holder.direct(levels.get(i).build()));
             final Stream<Item> loot = drops.stream().flatMap(drop -> drop.getItemStacks().stream()
-                    .sorted(Comparator.comparing(ItemStack::getCount).reversed().thenComparing(ItemStack::getDescriptionId))
+                    .sorted(Comparator.comparing(ItemStack::getCount).reversed().thenComparing(stack -> stack.getItem().getDescriptionId()))
                     .map(ItemStack::getItem));
 
             recipe(NETHERWORKER, MODULE_CUSTOM, "trip" + buildingLevel)
@@ -238,7 +245,7 @@ public class DefaultNetherWorkerLootProvider extends CustomRecipeAndLootTablePro
                     .maxBuildingLevel(buildingLevel)
                     .inputs(inputs)
                     .secondaryOutputs(loot.map(ItemStack::new).collect(Collectors.toList()))
-                    .lootTable(new ResourceLocation(MOD_ID, "recipes/" + NETHERWORKER + "/trip" + buildingLevel))
+                    .lootTable(Identifier.fromNamespaceAndPath(MOD_ID, "recipes/" + NETHERWORKER + "/trip" + buildingLevel))
                     .build(consumer);
         }
 
@@ -258,7 +265,7 @@ public class DefaultNetherWorkerLootProvider extends CustomRecipeAndLootTablePro
             for (int i = 0; i < levels.size(); ++i)
             {
                 final int buildingLevel = i + 1;
-                builder.accept(table(new ResourceLocation(MOD_ID, "recipes/" + NETHERWORKER + "/trip" + buildingLevel)), levels.get(i));
+                builder.accept(table(Identifier.fromNamespaceAndPath(MOD_ID, "recipes/" + NETHERWORKER + "/trip" + buildingLevel)), levels.get(i));
             }
         }, LootContextParamSets.ALL_PARAMS));
     }

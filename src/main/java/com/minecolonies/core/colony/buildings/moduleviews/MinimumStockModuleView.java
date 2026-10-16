@@ -10,9 +10,7 @@ import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.core.client.gui.modules.building.MinimumStockModuleWindow;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -51,7 +49,6 @@ public class MinimumStockModuleView extends AbstractBuildingModuleView implement
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
     public BOWindow getWindow()
     {
         return new MinimumStockModuleWindow(this);
@@ -70,9 +67,9 @@ public class MinimumStockModuleView extends AbstractBuildingModuleView implement
     }
 
     @Override
-    public ResourceLocation getIconResourceLocation()
+    public Identifier getIconResourceLocation()
     {
-        return new ResourceLocation(Constants.MOD_ID, "textures/gui/modules/stock.png");
+        return Identifier.fromNamespaceAndPath(Constants.MOD_ID, "textures/gui/modules/stock.png");
     }
 
     @Override

@@ -25,6 +25,7 @@ import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.constant.ColonyConstants;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.api.util.constant.TranslationConstants;
+import com.minecolonies.api.sounds.SoundManager;
 import com.minecolonies.core.client.gui.WindowBuildingBrowser;
 import com.minecolonies.core.client.gui.containers.WindowCitizenInventory;
 import com.minecolonies.core.client.render.worldevent.ColonyBorderRenderer;
@@ -43,26 +44,23 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.contents.TranslatableContents;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.ItemTags;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.HitResult;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
-import net.neoforged.neoforge.client.event.CustomizeGuiOverlayEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.sound.PlaySoundEvent;
 import net.neoforged.neoforge.common.util.Lazy;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.items.wrapper.InvWrapper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -79,16 +77,31 @@ import static com.minecolonies.core.colony.buildings.modules.BuildingModules.RES
 /**
  * Used to handle client events.
  */
-@OnlyIn(Dist.CLIENT)
 public class ClientEventHandler
 {
+    @SubscribeEvent
+    public static void onClientTick(final ClientTickEvent.Pre event)
+    {
+        if (Minecraft.getInstance().level == null)
+        {
+            IColonyManager.getInstance().resetColonyViews();
+        }
+        SoundManager.tick();
+    }
+
     /**
      * Lazy cache for crafting module lookups.
      */
     private static final Lazy<Map<String, BuildingEntry>> crafterToBuilding = Lazy.of(ClientEventHandler::buildCrafterToBuildingMap);
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void renderWorldLastEvent(@NotNull final RenderLevelStageEvent event)
+    public static void renderWorldLines(@NotNull final RenderLevelStageEvent.AfterTranslucentFeatures event)
+    {
+        WorldEventContext.INSTANCE.renderWorldLastEvent(event);
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void renderWorldSigns(@NotNull final RenderLevelStageEvent.AfterTranslucentBlocks event)
     {
         WorldEventContext.INSTANCE.renderWorldLastEvent(event);
     }
@@ -96,7 +109,7 @@ public class ClientEventHandler
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onwWorldTick(@NotNull final LevelTickEvent.Pre event)
     {
-        if (event.getLevel().isClientSide && ColonyConstants.rand.nextInt(20) == 0)
+        if (event.getLevel().isClientSide() && ColonyConstants.rand.nextInt(20) == 0)
         {
             WorldEventContext.INSTANCE.checkNearbyColony(event.getLevel());
         }
@@ -119,7 +132,7 @@ public class ClientEventHandler
             return;
         }
 
-        final ResourceLocation soundLocation = event.getSound().getLocation();
+        final Identifier soundLocation = event.getSound().getIdentifier();
         if (!MinecoloniesAPIProxy.getInstance().getConfig().getClient().citizenVoices.get()
             && soundLocation.getNamespace().equals(Constants.MOD_ID)
             && soundLocation.getPath().startsWith(CITIZEN_SOUND_EVENT_PREFIX)
@@ -155,7 +168,7 @@ public class ClientEventHandler
             event.getToolTip().add(extraItemTooltips.get(stack.getItem()));
         }
 
-        if (stack.is(ItemTags.DYEABLE) && IMinecoloniesAPI.getInstance().getConfig().getClient().showdyetooltips.get())
+        if (stack.has(DataComponents.DYED_COLOR) && IMinecoloniesAPI.getInstance().getConfig().getClient().showdyetooltips.get())
         {
             IMinecoloniesAPI.getInstance().getColonyManager().getCompatibilityManager().getDyeColor(stack).ifPresent(c ->
             {
@@ -192,7 +205,7 @@ public class ClientEventHandler
 
                 if (DomumOrnamentumUtils.isDoBlock(blockItem.getBlock()))
                 {
-                    for (Block block : MaterialTextureData.readFromItemStack(event.getItemStack()).getTexturedComponents().values())
+                    for (Block block : MaterialTextureData.readFromItemStack(event.getItemStack()).components().values())
                     {
                         tier = Math.max(tier, SchemAnalyzerUtil.getBlockTier(block));
                     }
@@ -277,7 +290,7 @@ public class ClientEventHandler
             {
                 minimumBuildingLevels.put(craftingBuilding, rec.getMinBuildingLevel());
             }
-            for (final ResourceLocation id : rec.getRequiredResearchIds())
+            for (final Identifier id : rec.getRequiredResearchIds())
             {
                 final Set<IGlobalResearch> researches;
                 if (IMinecoloniesAPI.getInstance().getGlobalResearchTree().hasResearch(id))
@@ -317,7 +330,7 @@ public class ClientEventHandler
             final Integer minimumLevel = crafterBuildingCombination.getValue();
             if (minimumLevel > 0)
             {
-                final ResourceLocation schematicName = crafterBuildingCombination.getKey().getRegistryName();
+                final Identifier schematicName = crafterBuildingCombination.getKey().getRegistryName();
                 // the above is not guaranteed to match (and indeed doesn't for a few buildings), but
                 // does match for all currently interesting crafters, at least.  there doesn't otherwise
                 // appear to be an easy way to get the schematic name from a BuildingEntry ... or
@@ -395,7 +408,7 @@ public class ClientEventHandler
         {
             return;
         }
-        final ResourceLocation effectId = colony.getResearchManager().getResearchEffectIdFrom(block);
+        final Identifier effectId = colony.getResearchManager().getResearchEffectIdFrom(block);
         if (colony.getResearchManager().getResearchEffects().getEffectStrength(effectId) > 0)
         {
             return;
@@ -408,12 +421,18 @@ public class ClientEventHandler
     }
 
     /**
-     * Event when the debug screen is opened. Event gets called by displayed text on the screen, we only need it when f3 is clicked.
+     * Debug screen entry showing the closest colony, when F3 is open. Registered via {@link net.neoforged.neoforge.client.event.RegisterDebugEntriesEvent}
+     * in {@link ClientRegistryHandler}, since the old {@code CustomizeGuiOverlayEvent.DebugText} was removed.
      */
-    @SubscribeEvent
-    public static void onDebugOverlay(final CustomizeGuiOverlayEvent.DebugText event)
+    public static class ColonyDebugScreenEntry implements net.minecraft.client.gui.components.debug.DebugScreenEntry
     {
-        final Minecraft mc = Minecraft.getInstance();
+        @Override
+        public void display(final net.minecraft.client.gui.components.debug.DebugScreenDisplayer displayer,
+            final net.minecraft.world.level.Level level,
+            final net.minecraft.world.level.chunk.LevelChunk clientChunk,
+            final net.minecraft.world.level.chunk.LevelChunk serverChunk)
+        {
+            final Minecraft mc = Minecraft.getInstance();
 
             final ClientLevel world = mc.level;
             final LocalPlayer player = mc.player;
@@ -423,7 +442,7 @@ public class ClientEventHandler
             {
                 if (IColonyManager.getInstance().isFarEnoughFromColonies(world, pos))
                 {
-                    event.getLeft().add(Component.translatableEscape(DEBUG_NO_CLOSE_COLONY).getString());
+                    displayer.addLine(Component.translatableEscape(DEBUG_NO_CLOSE_COLONY).getString());
                     return;
                 }
                 colony = IColonyManager.getInstance().getClosestIColony(world, pos);
@@ -433,14 +452,14 @@ public class ClientEventHandler
                     return;
                 }
 
-                event.getLeft()
-                  .add(Component.translatableEscape(DEBUG_NEXT_COLONY,
+                displayer.addLine(Component.translatableEscape(DEBUG_NEXT_COLONY,
                     (int) Math.sqrt(colony.getDistanceSquared(pos)),
                     IColonyManager.getInstance().getMinimumDistanceBetweenTownHalls()).getString());
                 return;
             }
 
-            event.getLeft().add(colony.getName() + " : " + Component.translatableEscape(DEBUG_BLOCKS_FROM_CENTER, (int) Math.sqrt(colony.getDistanceSquared(pos))).getString());
+            displayer.addLine(colony.getName() + " : " + Component.translatableEscape(DEBUG_BLOCKS_FROM_CENTER, (int) Math.sqrt(colony.getDistanceSquared(pos))).getString());
+        }
     }
 
     @SubscribeEvent(priority = EventPriority.LOW)

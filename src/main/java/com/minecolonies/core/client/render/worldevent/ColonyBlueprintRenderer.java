@@ -26,7 +26,6 @@ import com.minecolonies.core.tileentities.TileEntityColonyBuilding;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Tuple;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.phys.AABB;
@@ -125,7 +124,7 @@ public class ColonyBlueprintRenderer
         {
             shouldRenderBlueprints = !shouldRenderBlueprints;
 
-            ctx.clientPlayer.playNotifySound(SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.NEUTRAL, 1.0F, shouldRenderBlueprints ? 0.75F : 0.25F);
+            ctx.clientPlayer.playSound(SoundEvents.NOTE_BLOCK_PLING.value(), 1.0F, shouldRenderBlueprints ? 0.75F : 0.25F);
         }
 
         if (!ctx.hasNearestColony())

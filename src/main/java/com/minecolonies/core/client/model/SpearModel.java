@@ -1,7 +1,5 @@
 package com.minecolonies.core.client.model;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.model.Model;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
@@ -9,22 +7,19 @@ import net.minecraft.client.model.geom.builders.CubeListBuilder;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
-import net.minecraft.client.renderer.RenderType;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
-import org.jetbrains.annotations.NotNull;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.util.Unit;
 
 /**
  * Model for the Spear. The model is a long wooden rod with an iron head and leather handle.
  */
-@OnlyIn(Dist.CLIENT)
-public class SpearModel extends Model
+public class SpearModel extends Model<Unit>
 {
     private final ModelPart handle;
 
     public SpearModel(ModelPart handle)
     {
-        super(RenderType::entitySolid);
+        super(handle, RenderTypes::entitySolid);
         this.handle = handle;
     }
 
@@ -48,16 +43,5 @@ public class SpearModel extends Model
           PartPose.offsetAndRotation(0.0F, -9.375F, 0.0F, 0.0F, -0.7854F, 0.0F));
 
         return LayerDefinition.create(meshdefinition, 32, 32);
-    }
-
-    @Override
-    public void renderToBuffer(
-      final @NotNull PoseStack matrixStack,
-      final @NotNull VertexConsumer buffer,
-      final int packedLight,
-      final int packedOverlay,
-      final int color)
-    {
-        handle.render(matrixStack, buffer, packedLight, packedOverlay);
     }
 }

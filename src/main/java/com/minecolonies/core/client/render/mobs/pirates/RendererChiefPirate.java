@@ -1,24 +1,25 @@
 package com.minecolonies.core.client.render.mobs.pirates;
 
+import com.minecolonies.core.client.render.mobs.RaiderRenderState;
 import com.minecolonies.api.entity.mobs.AbstractEntityMinecoloniesMonster;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.model.HumanoidModel;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
 /**
  * Renderer used for Chief Barbarians.
  */
-public class RendererChiefPirate extends AbstractRendererPirate<AbstractEntityMinecoloniesMonster, HumanoidModel<AbstractEntityMinecoloniesMonster>>
+public class RendererChiefPirate extends AbstractRendererPirate<AbstractEntityMinecoloniesMonster, HumanoidModel<RaiderRenderState>>
 {
     /**
      * Texture of the entity.
      */
-    private static final ResourceLocation TEXTURE1 = new ResourceLocation("minecolonies", "textures/entity/raiders/pirate_nude1.png");
-    private static final ResourceLocation TEXTURE2 = new ResourceLocation("minecolonies", "textures/entity/raiders/pirate_nude2.png");
-    private static final ResourceLocation TEXTURE3 = new ResourceLocation("minecolonies", "textures/entity/raiders/pirate_nude3.png");
-    private static final ResourceLocation TEXTURE4 = new ResourceLocation("minecolonies", "textures/entity/raiders/pirate_nude4.png");
+    private static final Identifier TEXTURE1 = Identifier.fromNamespaceAndPath("minecolonies", "textures/entity/raiders/pirate_nude1.png");
+    private static final Identifier TEXTURE2 = Identifier.fromNamespaceAndPath("minecolonies", "textures/entity/raiders/pirate_nude2.png");
+    private static final Identifier TEXTURE3 = Identifier.fromNamespaceAndPath("minecolonies", "textures/entity/raiders/pirate_nude3.png");
+    private static final Identifier TEXTURE4 = Identifier.fromNamespaceAndPath("minecolonies", "textures/entity/raiders/pirate_nude4.png");
 
     /**
      * Constructor method for renderer
@@ -27,14 +28,14 @@ public class RendererChiefPirate extends AbstractRendererPirate<AbstractEntityMi
      */
     public RendererChiefPirate(final EntityRendererProvider.Context context)
     {
-        super(context, new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)), 0.5F);
+        super(context, new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_ARMOR.legs())), 0.5F);
     }
 
     @NotNull
     @Override
-    public ResourceLocation getTextureLocation(final AbstractEntityMinecoloniesMonster entity)
+    public Identifier getTextureLocation(@NotNull final RaiderRenderState state)
     {
-        switch (entity.getTextureId())
+        switch (state.textureId)
         {
             case 0:
                 return TEXTURE1;

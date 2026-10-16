@@ -6,12 +6,13 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.DirectionalBlock;
+import static com.minecolonies.api.util.RegistryConstructionContext.applyBlockKey;
 
 public abstract class AbstractBlockMinecoloniesDirectional<B extends AbstractBlockMinecoloniesDirectional<B>> extends DirectionalBlock implements IBlockMinecolonies<B>
 {
     public AbstractBlockMinecoloniesDirectional(final Properties properties)
     {
-        super(properties);
+        super(applyBlockKey(properties));
     }
 
     @Override

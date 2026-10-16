@@ -1,5 +1,7 @@
 package com.minecolonies.core.items;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.items.IMinecoloniesFoodItem;
 import com.minecolonies.api.util.constant.TranslationConstants;
@@ -12,6 +14,7 @@ import net.minecraft.world.inventory.tooltip.BundleTooltip;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.BundleContents;
 import org.jetbrains.annotations.NotNull;
@@ -43,11 +46,15 @@ public class ItemFood extends Item implements IMinecoloniesFoodItem
     }
 
     @Override
-    public void appendHoverText(@NotNull final ItemStack stack, @Nullable final TooltipContext ctx, @NotNull final List<Component> tooltip, @NotNull final TooltipFlag flagIn)
+    public void appendHoverText(@NotNull final ItemStack stack,
+      @Nullable final TooltipContext ctx,
+      @NotNull final TooltipDisplay display,
+      @NotNull final Consumer<Component> tooltip,
+      @NotNull final TooltipFlag flagIn)
     {
         if (WindowCitizenInventory.activeCitizenInventory == null)
         {
-            tooltip.add(Component.translatable(TranslationConstants.TIER_TOOLTIP + this.tier));
+            tooltip.accept(Component.translatable(TranslationConstants.TIER_TOOLTIP + this.tier));
         }
     }
 
@@ -67,7 +74,7 @@ public class ItemFood extends Item implements IMinecoloniesFoodItem
             qty++;
         }
 
-        return Optional.of(new BundleTooltip(new BundleContents(nonnulllist)));
+        return Optional.of(new BundleTooltip(new BundleContents(nonnulllist.stream().map(ItemStackTemplate::fromNonEmptyStack).toList())));
     }
 
     @Override

@@ -28,7 +28,7 @@
     <button id="bannerPicker" label="$(com.minecolonies.coremod.gui.townhall.edit_flag)" pos="280 57" size="129 17"
                  source="minecolonies:textures/gui/builderhut/builder_button_medium_large_banner.png"  color="black"/>bu
 
-    <text id="pickColor" label="$(com.minecolonies.coremod.gui.townhall.pickteamcolor)" pos="269 83" size="148 11" color="black"/>
+    <text id="pickColor" label="$(com.minecolonies.coremod.gui.townhall.pickteamcolor)" pos="269 83" size="66 11" color="black"/>
     <dropdown id="colorPicker"
               size="86 17"
               pos="337 80"
@@ -43,7 +43,7 @@
         </view>
     </dropdown>
 
-    <text label="$(com.minecolonies.coremod.gui.townhall.pickcolonystyle)" pos="269 108" size="148 11"  color="black"/>
+    <text label="$(com.minecolonies.coremod.gui.townhall.pickcolonystyle)" pos="269 108" size="66 11"  color="black"/>
     <button id="colonyStylePicker"
                  size="86 17"
                  pos="337 105"
@@ -55,7 +55,7 @@
                  label="$(com.minecolonies.coremod.gui.townhall.patreon)" tooltip="$(com.minecolonies.coremod.gui.townhall.patreon.hover)" />
 
 
-    <text label="$(com.minecolonies.coremod.gui.townhall.picktexturestyle)" pos="269 168" size="148 11" color="black"/>
+    <text label="$(com.minecolonies.coremod.gui.townhall.picktexturestyle)" pos="269 168" size="66 11" color="black"/>
     <dropdown id="textureStylePicker"
               size="86 17"
               pos="337 165"
@@ -74,7 +74,7 @@
     <button id="resettexture" size="86 17" pos="337 165" source="minecolonies:textures/gui/builderhut/builder_button_medium.png"
                  visible="false" color="black" text="$(com.minecolonies.gui.reset)"/>
 
-    <text label="$(com.minecolonies.coremod.gui.townhall.picknamestyle)" pos="269 193" size="148 11" color="black"/>
+    <text label="$(com.minecolonies.coremod.gui.townhall.picknamestyle)" pos="269 193" size="66 11" color="black"/>
     <dropdown id="nameStylePicker"
               size="86 17"
               pos="337 190"

@@ -1,5 +1,7 @@
 package com.minecolonies.core.items;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 import com.minecolonies.api.util.SoundUtils;
 import com.minecolonies.core.entity.citizen.EntityCitizen;
 import com.minecolonies.core.network.messages.client.VanillaParticleMessage;
@@ -44,7 +46,7 @@ public class ItemScrollBuff extends AbstractItemScroll
     @Override
     protected ItemStack onItemUseSuccess(final ItemStack itemStack, final Level world, final ServerPlayer player)
     {
-        if (world.random.nextInt(8) > 0)
+        if (world.getRandom().nextInt(8) > 0)
         {
             for (final LivingEntity entity : world.getEntitiesOfClass(EntityCitizen.class, player.getBoundingBox().inflate(15, 2, 15)))
             {
@@ -58,8 +60,8 @@ public class ItemScrollBuff extends AbstractItemScroll
         }
         else
         {
-            player.displayClientMessage(Component.translatableEscape("minecolonies.scroll.failed" + (world.random.nextInt(FAIL_RESPONSES_TOTAL) + 1)).setStyle(Style.EMPTY.withColor(
-              ChatFormatting.GOLD)), true);
+            player.sendOverlayMessage(Component.translatableEscape("minecolonies.scroll.failed" + (world.getRandom().nextInt(FAIL_RESPONSES_TOTAL) + 1)).setStyle(Style.EMPTY.withColor(
+              ChatFormatting.GOLD)));
             player.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, TICKS_SECOND * 10));
             SoundUtils.playSoundForPlayer(player, SoundEvents.TOTEM_USE, 0.04f, 1.0f);
         }
@@ -80,11 +82,15 @@ public class ItemScrollBuff extends AbstractItemScroll
     }
 
     @Override
-    public void appendHoverText(@NotNull final ItemStack stack, @Nullable final TooltipContext ctx, @NotNull final List<Component> tooltip, @NotNull final TooltipFlag flagIn)
+    public void appendHoverText(@NotNull final ItemStack stack,
+      @Nullable final TooltipContext ctx,
+      @NotNull final TooltipDisplay display,
+      @NotNull final Consumer<Component> tooltip,
+      @NotNull final TooltipFlag flagIn)
     {
         final MutableComponent guiHint = Component.translatableEscape(TOOL_GENERIC_SCROLL_BUFF_DESCRIPTION);
         guiHint.setStyle(Style.EMPTY.withColor(ChatFormatting.DARK_GREEN));
-        tooltip.add(guiHint);
+        tooltip.accept(guiHint);
     }
 
     @Override

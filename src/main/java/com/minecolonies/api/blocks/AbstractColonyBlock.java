@@ -17,9 +17,10 @@ import com.minecolonies.core.tileentities.TileEntityColonyBuilding;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -33,7 +34,7 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.phys.BlockHitResult;
@@ -41,6 +42,8 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
@@ -62,7 +65,7 @@ public abstract class AbstractColonyBlock<B extends AbstractColonyBlock<B>> exte
     /**
      * The direction the block is facing.
      */
-    public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
+    public static final EnumProperty<Direction> FACING = HorizontalDirectionalBlock.FACING;
 
     /**
      * The default hardness.
@@ -101,9 +104,57 @@ public abstract class AbstractColonyBlock<B extends AbstractColonyBlock<B>> exte
         this.name = getHutName();
     }
 
+    /**
+     * Whether the block at pos is the hut of a building registered in a colony and must not be broken.
+     * <p>
+     * Registered buildings are only removed through "Pick up building" in the building window
+     * ({@code IBuilding#pickUp} unregisters the building before removing the block). Players (survival and creative),
+     * fake players of machines, entities (wither, dragon, ...) and explosions all get refused. Unregistered hut blocks
+     * break normally. Disabled by the server option {@code protect_registered_buildings} (e.g. for PvP servers).
+     */
+    public static boolean isProtectedBuilding(@Nullable final BlockGetter level, @NotNull final BlockPos pos)
+    {
+        if (!(level instanceof final Level world) || !MinecoloniesAPIProxy.getInstance().getConfig().getServer().protectRegisteredBuildings.get())
+        {
+            return false;
+        }
+        return world.isClientSide()
+            ? IColonyManager.getInstance().getBuildingView(world.dimension(), pos) != null
+            : IColonyManager.getInstance().getBuilding(world, pos) != null;
+    }
+
+    @Override
+    public boolean canEntityDestroy(final BlockState state, final BlockGetter level, final BlockPos pos, final Entity entity)
+    {
+        return !isProtectedBuilding(level, pos) && super.canEntityDestroy(state, level, pos, entity);
+    }
+
+    @Override
+    public boolean onDestroyedByPlayer(
+      final BlockState state,
+      final Level level,
+      final BlockPos pos,
+      final Player player,
+      final ItemStack toolStack,
+      final boolean willHarvest,
+      final FluidState fluid)
+    {
+        // last line of defence for paths that skip the break event
+        if (isProtectedBuilding(level, pos))
+        {
+            return false;
+        }
+        return super.onDestroyedByPlayer(state, level, pos, player, toolStack, willHarvest, fluid);
+    }
+
     @Override
     public float getDestroyProgress(final BlockState state, @NotNull final Player player, @NotNull final BlockGetter world, @NotNull final BlockPos pos)
     {
+        if (isProtectedBuilding(player.level(), pos))
+        {
+            return 0F;
+        }
+
         final IBuilding building = IColonyManager.getInstance().getBuilding(player.level(), pos);
         if (building != null && !building.getChildren().isEmpty() && (player.level().getGameTime() - lastBreakTickWarn) < 100)
         {
@@ -145,14 +196,14 @@ public abstract class AbstractColonyBlock<B extends AbstractColonyBlock<B>> exte
     }
 
     @Override
-    public void onRemove(final @NotNull BlockState blockState, final @NotNull Level level, final @NotNull BlockPos pos, final @NotNull BlockState newBlockState, final boolean p_60519_)
+    protected void affectNeighborsAfterRemoval(final @NotNull BlockState blockState, final @NotNull ServerLevel level, final @NotNull BlockPos pos, final boolean movedByPiston)
     {
         final BlockEntity tileentity = level.getBlockEntity(pos);
         if (tileentity instanceof AbstractTileEntityColonyBuilding tileEntityColonyBuilding)
         {
             InventoryUtils.dropItemHandler(tileEntityColonyBuilding.getInventory(), level, pos.getX(), pos.getY(), pos.getZ());
         }
-        super.onRemove(blockState, level, pos, newBlockState, p_60519_);
+        super.affectNeighborsAfterRemoval(blockState, level, pos, movedByPiston);
     }
 
     /**
@@ -171,7 +222,7 @@ public abstract class AbstractColonyBlock<B extends AbstractColonyBlock<B>> exte
 
     @NotNull
     @Override
-    public ItemInteractionResult useItemOn(
+    public InteractionResult useItemOn(
         final ItemStack stack,
         final BlockState state,
         final Level worldIn,
@@ -183,11 +234,11 @@ public abstract class AbstractColonyBlock<B extends AbstractColonyBlock<B>> exte
        /*
         If the world is client, open the gui of the building
          */
-        if (worldIn.isClientSide)
+        if (worldIn.isClientSide())
         {
             if (hand == InteractionHand.OFF_HAND)
             {
-                return ItemInteractionResult.FAIL;
+                return InteractionResult.FAIL;
             }
 
             @Nullable final IBuildingView building = IColonyManager.getInstance().getBuildingView(worldIn.dimension(), pos);
@@ -198,37 +249,37 @@ public abstract class AbstractColonyBlock<B extends AbstractColonyBlock<B>> exte
                 if (building == null && ColonyUtils.getOwningColony(chunk) == 0)
                 {
                     MessageUtils.format(MISSING_COLONY).sendTo(player);
-                    return ItemInteractionResult.FAIL;
+                    return InteractionResult.FAIL;
                 }
 
                 if (building == null && ColonyUtils.getAllClaimingBuildings(chunk).values().stream().flatMap(Collection::stream).noneMatch(p -> p.equals(pos)))
                 {
-                    IColonyManager.getInstance().openReactivationWindow(pos);
-                    return ItemInteractionResult.SUCCESS;
+                    MinecoloniesAPIProxy.getInstance().openReactivationWindow(pos);
+                    return InteractionResult.SUCCESS;
                 }
             }
 
             if (building == null)
             {
                 MessageUtils.format(HUT_BLOCK_MISSING_BUILDING).sendTo(player);
-                return ItemInteractionResult.FAIL;
+                return InteractionResult.FAIL;
             }
 
             if (building.getColony() == null)
             {
                 MessageUtils.format(HUT_BLOCK_MISSING_COLONY).sendTo(player);
-                return ItemInteractionResult.FAIL;
+                return InteractionResult.FAIL;
             }
 
             if (!building.getColony().getPermissions().hasPermission(player, Action.ACCESS_HUTS))
             {
                 MessageUtils.format(PERMISSION_DENIED).sendTo(player);
-                return ItemInteractionResult.FAIL;
+                return InteractionResult.FAIL;
             }
 
             building.openGui(player.isShiftKeyDown());
         }
-        return ItemInteractionResult.SUCCESS;
+        return InteractionResult.SUCCESS;
     }
 
     @Nullable
@@ -254,7 +305,7 @@ public abstract class AbstractColonyBlock<B extends AbstractColonyBlock<B>> exte
         /*
         Only work on server side
         */
-        if (worldIn.isClientSide)
+        if (worldIn.isClientSide())
         {
             return;
         }
@@ -286,9 +337,9 @@ public abstract class AbstractColonyBlock<B extends AbstractColonyBlock<B>> exte
      * Get the registry name frm the blck hut.
      * @return the key.
      */
-    public ResourceLocation getRegistryName()
+    public Identifier getRegistryName()
     {
-        return new ResourceLocation(Constants.MOD_ID, getHutName());
+        return Identifier.fromNamespaceAndPath(Constants.MOD_ID, getHutName());
     }
 
     @Override

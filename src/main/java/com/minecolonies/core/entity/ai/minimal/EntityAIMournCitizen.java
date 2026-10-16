@@ -17,12 +17,14 @@ import com.minecolonies.core.entity.pathfinding.navigation.EntityNavigationUtils
 import com.minecolonies.core.tileentities.TileEntityNamedGrave;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.targeting.TargetingConditions;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Iterator;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -158,6 +160,13 @@ public class EntityAIMournCitizen implements IStateAI
             return MourningState.DECIDE;
         }
 
+        final GraveyardManagementModule module = graveyard.getModule(GraveyardManagementModule.class);
+
+        if (module == null)
+        {
+            return MourningState.DECIDE;
+        }
+
         if (!citizen.getNavigation().isDone())
         {
             return MourningState.WANDER_AT_GRAVEYARD;
@@ -171,7 +180,7 @@ public class EntityAIMournCitizen implements IStateAI
         }
 
         // Try find the grave of one of the diseased.
-        final Set<Tuple<BlockPos, Direction>> gravePositions = ((BuildingGraveyard) graveyard).getGravePositions();
+        final Set<Tuple<BlockPos, Direction>> gravePositions = module.getGravePositions();
         for (final Tuple<BlockPos, Direction> gravePos : gravePositions)
         {
             if (WorldUtil.isBlockLoaded(citizen.level(), gravePos.getA()))
@@ -247,13 +256,13 @@ public class EntityAIMournCitizen implements IStateAI
 
         if (closestEntity == null)
         {
-            closestEntity = this.citizen.level().getNearestEntity(EntityCitizen.class,
-              TargetingConditions.DEFAULT,
-              citizen,
-              citizen.getX(),
-              citizen.getY(),
-              citizen.getZ(),
-              citizen.getBoundingBox().inflate(3.0D, 3.0D, 3.0D));
+            closestEntity = this.citizen.level().getEntitiesOfClass(
+                EntityCitizen.class,
+                citizen.getBoundingBox().inflate(3.0D, 3.0D, 3.0D),
+                candidate -> candidate != citizen && TargetingConditions.DEFAULT.test((ServerLevel) citizen.level(), citizen, candidate))
+              .stream()
+              .min(Comparator.comparingDouble(citizen::distanceToSqr))
+              .orElse(null);
 
             if (closestEntity == null)
             {

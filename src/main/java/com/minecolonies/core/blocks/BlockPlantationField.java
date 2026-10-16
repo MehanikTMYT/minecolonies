@@ -15,9 +15,10 @@ import com.minecolonies.core.tileentities.TileEntityPlantationField;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -94,9 +95,9 @@ public class BlockPlantationField extends AbstractBlockMinecoloniesHorizontal<Bl
     }
 
     @Override
-    public ResourceLocation getRegistryName()
+    public Identifier getRegistryName()
     {
-        return new ResourceLocation(Constants.MOD_ID, BLOCK_NAME);
+        return Identifier.fromNamespaceAndPath(Constants.MOD_ID, BLOCK_NAME);
     }
 
     @Override
@@ -120,7 +121,7 @@ public class BlockPlantationField extends AbstractBlockMinecoloniesHorizontal<Bl
     }
 
     @Override
-    public ItemInteractionResult useItemOn(
+    public InteractionResult useItemOn(
       final ItemStack stack,
       final BlockState state,
       final Level worldIn,
@@ -130,24 +131,24 @@ public class BlockPlantationField extends AbstractBlockMinecoloniesHorizontal<Bl
       final BlockHitResult ray)
     {
         // If this is the client side, open the plantation field GUI
-        if (worldIn.isClientSide)
+        if (worldIn.isClientSide())
         {
             if (hand == InteractionHand.OFF_HAND)
             {
-                return ItemInteractionResult.FAIL;
+                return InteractionResult.FAIL;
             }
 
             final BlockEntity tileEntity = worldIn.getBlockEntity(pos);
             if (tileEntity instanceof TileEntityPlantationField plantationField)
             {
                 new WindowPlantationField(plantationField).open();
-                return ItemInteractionResult.SUCCESS;
+                return InteractionResult.SUCCESS;
             }
 
-            return ItemInteractionResult.FAIL;
+            return InteractionResult.FAIL;
         }
 
-        return ItemInteractionResult.SUCCESS;
+        return InteractionResult.SUCCESS;
     }
 
     @Override
@@ -171,7 +172,7 @@ public class BlockPlantationField extends AbstractBlockMinecoloniesHorizontal<Bl
     }
 
     @Override
-    public void wasExploded(final Level worldIn, final BlockPos pos, final Explosion explosionIn)
+    public void wasExploded(final ServerLevel worldIn, final BlockPos pos, final Explosion explosionIn)
     {
         notifyColonyAboutDestruction(worldIn, pos);
         super.wasExploded(worldIn, pos, explosionIn);
@@ -188,7 +189,7 @@ public class BlockPlantationField extends AbstractBlockMinecoloniesHorizontal<Bl
     {
         super.setPlacedBy(worldIn, pos, state, placer, stack);
 
-        if (worldIn.isClientSide)
+        if (worldIn.isClientSide())
         {
             return;
         }

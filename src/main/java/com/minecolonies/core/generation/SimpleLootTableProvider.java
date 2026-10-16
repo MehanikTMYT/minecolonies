@@ -6,7 +6,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.loot.LootTableProvider;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.EmptyLootItem;
@@ -41,7 +41,7 @@ public abstract class SimpleLootTableProvider extends LootTableProvider
      * @param id the location.
      * @return the resource key.
      */
-    public static ResourceKey<LootTable> table(@NotNull final ResourceLocation id)
+    public static ResourceKey<LootTable> table(@NotNull final Identifier id)
     {
         return ResourceKey.create(Registries.LOOT_TABLE, id);
     }

@@ -3,6 +3,7 @@
 // Paste this class into your mod and generate all required imports
 package com.minecolonies.core.client.model;
 
+import com.minecolonies.api.client.render.modeltype.CitizenRenderState;
 import com.minecolonies.api.client.render.modeltype.CitizenModel;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import net.minecraft.client.model.HumanoidModel;
@@ -10,14 +11,14 @@ import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.*;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
 import static com.minecolonies.core.entity.ai.workers.guard.EntityAIDruid.RENDER_META_POTION;
 
-public class MaleDruidModel extends CitizenModel<AbstractEntityCitizen>
+public class MaleDruidModel extends CitizenModel
 {
-    public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(new ResourceLocation("modid", "modelentitydruidmale"), "main");
+    public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(Identifier.fromNamespaceAndPath("modid", "modelentitydruidmale"), "main");
 
     public MaleDruidModel(ModelPart root)
     {
@@ -86,9 +87,9 @@ public class MaleDruidModel extends CitizenModel<AbstractEntityCitizen>
     }
 
     @Override
-    public void setupAnim(@NotNull final AbstractEntityCitizen entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch)
+    public void setupAnim(@NotNull final CitizenRenderState state)
     {
-        super.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
-        body.getChild("potionBag").visible = entity.getRenderMetadata().contains(RENDER_META_POTION) && isWorking(entity);
+        super.setupAnim(state);
+        body.getChild("potionBag").visible = state.renderMetadata.contains(RENDER_META_POTION) && isWorking(state);
     }
 }

@@ -1,5 +1,8 @@
 package com.minecolonies.core.entity.other;
 
+import com.minecolonies.api.util.ValueIOUtils;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
 import com.minecolonies.api.entity.ModEntities;
 import com.minecolonies.api.entity.mobs.ICustomAttackSound;
 import com.minecolonies.api.items.ModItems;
@@ -11,15 +14,13 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.projectile.AbstractArrow;
-import net.minecraft.world.entity.projectile.ThrownTrident;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
+import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -109,7 +110,7 @@ public class SpearEntity extends ThrownTrident implements ICustomAttackSound
         }
 
         this.dealtDamage = true;
-        if (targetEntity.hurt(damageSource, damageAmount))
+        if (this.level() instanceof final ServerLevel serverLevel && targetEntity.hurtServer(serverLevel, damageSource, damageAmount))
         {
             if (targetEntity.getType() == EntityType.ENDERMAN)
             {
@@ -140,16 +141,34 @@ public class SpearEntity extends ThrownTrident implements ICustomAttackSound
     }
 
     @Override
-    public void readAdditionalSaveData(@NotNull CompoundTag nbt)
+    protected void readAdditionalSaveData(@NotNull final ValueInput input)
     {
-        super.readAdditionalSaveData(nbt);
-        this.dealtDamage = nbt.getBoolean(NBT_DEALT_DAMAGE);
+        super.readAdditionalSaveData(input);
+        readAdditionalSaveDataTag(ValueIOUtils.readAsTag(input));
+    }
+
+    /**
+     * Reads the entity save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void readAdditionalSaveDataTag(final CompoundTag nbt)
+    {
+        this.dealtDamage = nbt.getBooleanOr(NBT_DEALT_DAMAGE, false);
     }
 
     @Override
-    public void addAdditionalSaveData(@NotNull CompoundTag nbt)
+    protected void addAdditionalSaveData(@NotNull final ValueOutput output)
     {
-        super.addAdditionalSaveData(nbt);
+        super.addAdditionalSaveData(output);
+        final CompoundTag saveTag = new CompoundTag();
+        addAdditionalSaveDataTag(saveTag);
+        ValueIOUtils.writeAsTag(output, saveTag);
+    }
+
+    /**
+     * Writes the entity save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void addAdditionalSaveDataTag(final CompoundTag nbt)
+    {
         nbt.putBoolean(NBT_DEALT_DAMAGE, this.dealtDamage);
     }
 
@@ -189,7 +208,6 @@ public class SpearEntity extends ThrownTrident implements ICustomAttackSound
         return 0.9F;
     }
 
-    @OnlyIn(Dist.CLIENT)
     public boolean shouldRender(double x, double y, double z)
     {
         return true;
@@ -202,13 +220,13 @@ public class SpearEntity extends ThrownTrident implements ICustomAttackSound
     }
 
     @Override
-    public boolean save(@NotNull CompoundTag nbt)
+    public boolean save(@NotNull ValueOutput output)
     {
         return false;
     }
 
     @Override
-    public void load(@NotNull CompoundTag nbt)
+    public void load(@NotNull ValueInput input)
     {
         discard();
     }

@@ -22,8 +22,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashSet;
@@ -169,7 +167,6 @@ public abstract class ServerCitizenInteraction extends AbstractInteractionRespon
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
     public boolean onClientResponseTriggered(final int responseId, final Player player, final ICitizenDataView data, final BOWindow window)
     {
         final Component response = getPossibleResponses().get(responseId);
@@ -203,9 +200,9 @@ public abstract class ServerCitizenInteraction extends AbstractInteractionRespon
     public void deserializeNBT(@NotNull final HolderLookup.Provider provider, @NotNull final CompoundTag compoundNBT)
     {
         super.deserializeNBT(provider, compoundNBT);
-        this.displayAtWorldTick = compoundNBT.getInt(TAG_DELAY);
+        this.displayAtWorldTick = compoundNBT.getIntOr(TAG_DELAY, 0);
         this.parents.clear();
-        final ListTag list = compoundNBT.getList(TAG_PARENTS, Tag.TAG_COMPOUND);
+        final ListTag list = compoundNBT.getListOrEmpty(TAG_PARENTS);
         for (Tag tag : list)
         {
             this.parents.add(Utils.deserializeCodecMess(ComponentSerialization.CODEC, provider, tag));

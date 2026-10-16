@@ -246,6 +246,31 @@ public final class Utils
         }).get();
     }
 
+    /**
+     * Writes a possibly empty stack in the tag layout that {@code ItemStack#saveOptional} used before 26.1 removed it;
+     * {@link ItemStack#OPTIONAL_CODEC} produces the exact same shape (an empty compound for an empty stack).
+     *
+     * @param provider the registry lookup provider.
+     * @param stack    the stack to serialize.
+     * @return the serialized tag.
+     */
+    public static Tag saveOptionalItemStack(final HolderLookup.Provider provider, final ItemStack stack)
+    {
+        return serializeCodecMess(ItemStack.OPTIONAL_CODEC, provider, stack);
+    }
+
+    /**
+     * Counterpart of {@link #saveOptionalItemStack}, replacing the removed {@code ItemStack#parseOptional}.
+     *
+     * @param provider the registry lookup provider.
+     * @param tag      the tag to read.
+     * @return the stack, or {@link ItemStack#EMPTY} when the tag holds no stack.
+     */
+    public static ItemStack parseOptionalItemStack(final HolderLookup.Provider provider, final Tag tag)
+    {
+        return deserializeCodecMess(ItemStack.OPTIONAL_CODEC, provider, tag);
+    }
+
     public static <T extends Object> JsonElement serializeCodecMessToJson(final Codec<T> codec, HolderLookup.Provider provider, final T obj)
     {
         return codec.encodeStart(provider.createSerializationContext(JsonOps.INSTANCE), obj).getOrThrow();

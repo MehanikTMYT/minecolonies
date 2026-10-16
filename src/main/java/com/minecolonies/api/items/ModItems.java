@@ -1,8 +1,15 @@
 package com.minecolonies.api.items;
 
 import com.minecolonies.core.items.ItemFood;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.Item;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Class handling the registering of the mod items.
@@ -254,5 +261,38 @@ public final class ModItems
           tacos,
           fried_rice
         };
+    }
+
+    /**
+     * The {@link FoodProperties} that each MineColonies food item was registered with, keyed by registry path.
+     * Recorded at registration time so that datagen can read the same values used to build the item without
+     * needing bound item components: datagen never fires {@code DefaultDataComponentsBoundEvent} (there's no real
+     * world/connection for it to react to), so reading a modded item's default components there throws.
+     */
+    private static final Map<String, FoodProperties> FOOD_PROPERTIES_BY_NAME = new HashMap<>();
+
+    /**
+     * Record the {@link FoodProperties} a food item was registered with, so that {@link #getFoodProperties} can
+     * later look it back up without needing the item's data components to be bound.
+     *
+     * @param name the item's registry path (matching the name it was registered under).
+     * @param food the food properties it was registered with.
+     */
+    public static void registerFoodProperties(@NotNull final String name, @NotNull final FoodProperties food)
+    {
+        FOOD_PROPERTIES_BY_NAME.put(name, food);
+    }
+
+    /**
+     * Get the {@link FoodProperties} a MineColonies food item was registered with.
+     *
+     * @param item the item to look up.
+     * @return the food properties, or {@code null} if this item isn't a MineColonies food item.
+     */
+    @Nullable
+    public static FoodProperties getFoodProperties(@NotNull final Item item)
+    {
+        final Identifier id = BuiltInRegistries.ITEM.getKey(item);
+        return id == null ? null : FOOD_PROPERTIES_BY_NAME.get(id.getPath());
     }
 }

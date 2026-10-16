@@ -1,0 +1,14 @@
+{
+  "model": {
+    "type": "minecraft:condition",
+    "on_false": {
+      "type": "minecraft:model",
+      "model": "minecolonies:item/build_goggles"
+    },
+    "on_true": {
+      "type": "minecraft:model",
+      "model": "minecolonies:item/build_goggles_disabled"
+    },
+    "property": "minecolonies:blueprint_render_disabled"
+  }
+}

@@ -10,12 +10,14 @@ import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.core.colony.buildings.modules.AnimalHerdingModule;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.world.item.crafting.RecipeMap;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 
@@ -35,14 +37,33 @@ public final class RecipeAnalyzer
      * @param world the world, if available (some recipes need it)
      * @return the recipe map
      */
-    public static Map<CraftingType, List<IGenericRecipe>> buildVanillaRecipesMap(@NotNull final RecipeManager recipeManager,
-                                                                                 @NotNull final Level world)
+    public static Map<CraftingType, List<IGenericRecipe>> buildVanillaRecipesMap(
+      @NotNull final RecipeManager recipeManager,
+      @NotNull final Level world)
     {
-        final ImmutableMap.Builder<CraftingType, List<IGenericRecipe>> builder = ImmutableMap.builder();
+        return buildVanillaRecipesMap(RecipeMap.create(recipeManager.getRecipes()), world);
+    }
 
-        for (final CraftingType type : MinecoloniesAPIProxy.getInstance().getCraftingTypeRegistry())
+    /**
+     * Build a map of all potentially learnable recipes from a synchronized
+     * recipe map.
+     *
+     * @param recipeMap the available recipes.
+     * @param world     the world.
+     * @return the recipe map grouped by MineColonies crafting type.
+     */
+    public static Map<CraftingType, List<IGenericRecipe>> buildVanillaRecipesMap(
+      @NotNull final RecipeMap recipeMap,
+      @NotNull final Level world)
+    {
+        final ImmutableMap.Builder<CraftingType, List<IGenericRecipe>> builder =
+          ImmutableMap.builder();
+
+        for (final CraftingType type :
+          MinecoloniesAPIProxy.getInstance().getCraftingTypeRegistry())
         {
-            final List<IGenericRecipe> recipes = type.findRecipes(recipeManager, world);
+            final List<IGenericRecipe> recipes =
+              type.findRecipes(recipeMap, world);
             builder.put(type, recipes);
         }
 
@@ -115,18 +136,18 @@ public final class RecipeAnalyzer
         {
             if (entityType.getCategory() != MobCategory.CREATURE) { continue; }
 
-            final ResourceLocation id = EntityType.getKey(entityType);
+            final Identifier id = EntityType.getKey(entityType);
 
             try
             {
                 // sadly there doesn't seem to be a better way to discover the actual classes for each type, because Java
-                final Entity entity = entityType.create(level);
+                final Entity entity = entityType.create(level, EntitySpawnReason.COMMAND);
                 if (entity instanceof Animal animal)
                 {
                     animals.add(animal);
                 }
             }
-            catch (final LinkageError | Exception ex) 
+            catch (final LinkageError | Exception ex)
             {
                 Log.getLogger().error("Couldnt analyze animal: {}. Please report this to the author of {}." , id, id.getNamespace(), ex);
             }

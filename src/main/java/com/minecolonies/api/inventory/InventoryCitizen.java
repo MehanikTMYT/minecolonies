@@ -1,5 +1,6 @@
 package com.minecolonies.api.inventory;
 
+import com.minecolonies.api.util.Utils;
 import com.google.common.collect.Iterables;
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.util.InventoryUtils;
@@ -567,7 +568,7 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
             {
                 final CompoundTag compoundNBT = new CompoundTag();
                 compoundNBT.putByte(NbtTagConstants.SLOT, (byte) i);
-                compoundNBT.put(NbtTagConstants.STACK, this.mainInventory.get(i).saveOptional(provider));
+                compoundNBT.put(NbtTagConstants.STACK, Utils.saveOptionalItemStack(provider, this.mainInventory.get(i)));
                 invTagList.add(compoundNBT);
                 freeSlots--;
             }
@@ -581,7 +582,7 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
             {
                 final CompoundTag compoundNBT = new CompoundTag();
                 compoundNBT.putByte(NbtTagConstants.SLOT, (byte) i);
-                compoundNBT.put(NbtTagConstants.STACK, this.armorInventory.get(i).saveOptional(provider));
+                compoundNBT.put(NbtTagConstants.STACK, Utils.saveOptionalItemStack(provider, this.armorInventory.get(i)));
                 armorTagList.add(compoundNBT);
             }
         }
@@ -595,7 +596,7 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
      */
     public void read(@NotNull final HolderLookup.Provider provider, final CompoundTag nbtTagCompound)
     {
-        int size = nbtTagCompound.getInt(TAG_INV_SIZE);
+        int size = nbtTagCompound.getIntOr(TAG_INV_SIZE, 0);
         if (this.mainInventory.size() < size)
         {
             size -= size % ROW_SIZE;
@@ -604,12 +605,12 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
 
         freeSlots = mainInventory.size();
 
-        final ListTag nbtTagList = nbtTagCompound.getList(TAG_INVENTORY, 10);
+        final ListTag nbtTagList = nbtTagCompound.getListOrEmpty(TAG_INVENTORY);
         for (int i = 0; i < nbtTagList.size(); i++)
         {
-            final CompoundTag compoundNBT = nbtTagList.getCompound(i);
-            final int j = compoundNBT.getByte(NbtTagConstants.SLOT) & 255;
-            final ItemStack itemstack = ItemStack.parseOptional(provider, compoundNBT.getCompound(NbtTagConstants.STACK));
+            final CompoundTag compoundNBT = nbtTagList.getCompoundOrEmpty(i);
+            final int j = compoundNBT.getByteOr(NbtTagConstants.SLOT, (byte) 0) & 255;
+            final ItemStack itemstack = Utils.parseOptionalItemStack(provider, compoundNBT.getCompoundOrEmpty(NbtTagConstants.STACK));
 
             if (!itemstack.isEmpty())
             {
@@ -621,12 +622,12 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
             }
         }
 
-        final ListTag armorTagList = nbtTagCompound.getList(TAG_ARMOR_INVENTORY, 10);
+        final ListTag armorTagList = nbtTagCompound.getListOrEmpty(TAG_ARMOR_INVENTORY);
         for (int i = 0; i < armorTagList.size(); ++i)
         {
-            final CompoundTag compoundNBT = armorTagList.getCompound(i);
-            final int j = compoundNBT.getByte(SLOT) & 255;
-            final ItemStack itemstack = ItemStack.parseOptional(provider, compoundNBT.getCompound(NbtTagConstants.STACK));
+            final CompoundTag compoundNBT = armorTagList.getCompoundOrEmpty(i);
+            final int j = compoundNBT.getByteOr(SLOT, (byte) 0) & 255;
+            final ItemStack itemstack = Utils.parseOptionalItemStack(provider, compoundNBT.getCompoundOrEmpty(NbtTagConstants.STACK));
 
             if (!itemstack.isEmpty())
             {

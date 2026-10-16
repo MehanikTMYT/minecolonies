@@ -11,16 +11,16 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataProvider;
 import net.minecraft.data.PackOutput;
-import net.minecraft.data.tags.ItemTagsProvider;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.data.tags.TagAppender;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.common.Tags;
+import net.neoforged.neoforge.common.data.BlockTagCopyingItemTagProvider;
 import net.neoforged.neoforge.common.data.BlockTagsProvider;
-import net.neoforged.neoforge.common.data.ExistingFileHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,7 +32,7 @@ import java.util.concurrent.CompletableFuture;
 import static com.minecolonies.api.util.constant.Constants.MOD_ID;
 
 @SuppressWarnings("unchecked")
-public class DefaultItemTagsProvider extends ItemTagsProvider
+public class DefaultItemTagsProvider extends BlockTagCopyingItemTagProvider
 {
     private final PackOutput.PathProvider langPath;
     private JsonObject langJson;
@@ -40,10 +40,9 @@ public class DefaultItemTagsProvider extends ItemTagsProvider
     public DefaultItemTagsProvider(
       @NotNull final PackOutput output,
       final CompletableFuture<HolderLookup.Provider> lookupProvider,
-      @NotNull final BlockTagsProvider blockTagsProvider,
-      @Nullable final ExistingFileHelper existingFileHelper)
+      @NotNull final BlockTagsProvider blockTagsProvider)
     {
-        super(output, lookupProvider, blockTagsProvider.contentsGetter(), MOD_ID, existingFileHelper);
+        super(output, lookupProvider, blockTagsProvider.contentsGetter(), MOD_ID);
         langPath = output.createPathProvider(PackOutput.Target.RESOURCE_PACK, "lang");
     }
 
@@ -53,7 +52,7 @@ public class DefaultItemTagsProvider extends ItemTagsProvider
     {
         langJson = new JsonObject();
         return super.run(output).thenCompose(r ->
-                DataProvider.saveStable(output, langJson, langPath.json(new ResourceLocation(Constants.MOD_ID, "tag.item"))));
+                DataProvider.saveStable(output, langJson, langPath.json(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "tag.item"))));
     }
 
     /**
@@ -62,13 +61,13 @@ public class DefaultItemTagsProvider extends ItemTagsProvider
     @Deprecated
     @NotNull
     @Override
-    protected IntrinsicTagAppender<Item> tag(@NotNull final TagKey<Item> tagKey)
+    protected TagAppender<Item, Item> tag(@NotNull final TagKey<Item> tagKey)
     {
         return super.tag(tagKey);
     }
 
     @NotNull
-    protected IntrinsicTagAppender<Item> tag(@NotNull final TagKey<Item> tagKey, @NotNull final String description)
+    protected TagAppender<Item, Item> tag(@NotNull final TagKey<Item> tagKey, @NotNull final String description)
     {
         translate(tagKey, description);
         return super.tag(tagKey);
@@ -129,14 +128,14 @@ public class DefaultItemTagsProvider extends ItemTagsProvider
         tag(ModTags.rawMeat, "Raw Meat").addTag(Tags.Items.FOODS_RAW_MEAT);
 
         // this tag is just for backwards compatibility and could be removed in a future Minecraft version
-        final TagKey<Item> shulkerBoxes = ItemTags.create(new ResourceLocation(MOD_ID, "shulker_boxes"));
+        final TagKey<Item> shulkerBoxes = ItemTags.create(Identifier.fromNamespaceAndPath(MOD_ID, "shulker_boxes"));
         tag(shulkerBoxes, "Shulker Boxes").addTag(Tags.Items.SHULKER_BOXES);
 
         // this tag is just for backwards compatibility and could be removed in a future Minecraft version
-        final TagKey<Item> glazedTerracotta = ItemTags.create(new ResourceLocation(MOD_ID, "glazed_terracotta"));
+        final TagKey<Item> glazedTerracotta = ItemTags.create(Identifier.fromNamespaceAndPath(MOD_ID, "glazed_terracotta"));
         tag(glazedTerracotta, "Glazed Terracotta").addTag(Tags.Items.GLAZED_TERRACOTTAS);
 
-        final TagKey<Item> storageBlocks = ItemTags.create(new ResourceLocation(MOD_ID, "storage_blocks"));
+        final TagKey<Item> storageBlocks = ItemTags.create(Identifier.fromNamespaceAndPath(MOD_ID, "storage_blocks"));
         tag(storageBlocks, "Storage Blocks")
           .addTag(Tags.Items.STORAGE_BLOCKS)
           .add(Items.BONE_BLOCK)
@@ -214,14 +213,16 @@ public class DefaultItemTagsProvider extends ItemTagsProvider
           .add(Items.SPIDER_EYE)
           .add(Items.ROTTEN_FLESH);
 
-        tag(ModTags.feed)
+        tag(ModTags.feed, "Mount Feed")
           .add(Items.WHEAT)
           .add(ModBlocks.blockDurum.asItem())
           .addTag(Tags.Items.CROPS_WHEAT);
 
-        tag(ModTags.leather)
+        tag(ModTags.leather, "Mount Tack")
           .add(Items.SADDLE)
-          .add(Items.LEATHER);
+          .add(Items.LEATHER)
+          .add(Items.LEATHER_HORSE_ARMOR)
+          .add(Items.ARMADILLO_SCUTE);
 
         final Item[] paperExtras = getDomumExtra(ExtraBlockType.BASE_PAPER, ExtraBlockType.LIGHT_PAPER);
 
@@ -533,7 +534,24 @@ public class DefaultItemTagsProvider extends ItemTagsProvider
           .addTag(ModTags.crafterProduct.get(TagConstants.CRAFTING_MECHANIC))
           .addTag(ModTags.crafterProduct.get(TagConstants.CRAFTING_DYER))
           .addTag(ModTags.crafterProduct.get(TagConstants.CRAFTING_SAWMILL))
-          .addTag(ItemTags.TRIM_TEMPLATES)
+          .add(Items.SENTRY_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.DUNE_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.COAST_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.WILD_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.WARD_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.EYE_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.VEX_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.TIDE_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.SNOUT_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.RIB_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.SPIRE_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.WAYFINDER_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.SHAPER_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.SILENCE_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.RAISER_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.HOST_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.FLOW_ARMOR_TRIM_SMITHING_TEMPLATE,
+            Items.BOLT_ARMOR_TRIM_SMITHING_TEMPLATE)
           .add(Items.LECTERN, Items.PISTON, Items.NETHERITE_UPGRADE_SMITHING_TEMPLATE)
           .add(Items.PRISMARINE, Items.PRISMARINE_BRICKS)
           .add(paperExtras);

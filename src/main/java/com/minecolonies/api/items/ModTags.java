@@ -2,7 +2,7 @@ package com.minecolonies.api.items;
 
 import com.minecolonies.api.util.constant.TagConstants;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
@@ -54,6 +54,7 @@ public class ModTags
     public static final TagKey<Block> mushroomBlocks   = BlockTags.create(TagConstants.MUSHROOMS);
     public static final TagKey<Block> hugeMushroomBlocks   = BlockTags.create(TagConstants.MUSHROOMS_HUGE);
     public static final TagKey<Block> fungiBlocks      = BlockTags.create(TagConstants.FUNGI);
+    public static final TagKey<Item> repairsNothing    = ItemTags.create(TagConstants.REPAIRS_NOTHING);
     public static final TagKey<Item> fungi             = ItemTags.create(TagConstants.FUNGI);
     public static final TagKey<Item> compostables      = ItemTags.create(TagConstants.COMPOSTABLES);
     public static final TagKey<Item> compostables_poor = ItemTags.create(TagConstants.COMPOSTABLES_POOR);
@@ -147,11 +148,11 @@ public class ModTags
      */
     private static void initCrafterRules(@NotNull final String crafterName)
     {
-        final ResourceLocation products = new ResourceLocation(MOD_ID, crafterName.concat(PRODUCT));
-        final ResourceLocation ingredients = new ResourceLocation(MOD_ID, crafterName.concat(INGREDIENT));
-        final ResourceLocation productsExcluded = new ResourceLocation(MOD_ID, crafterName.concat(PRODUCT_EXCLUDED));
-        final ResourceLocation ingredientsExcluded = new ResourceLocation(MOD_ID, crafterName.concat(INGREDIENT_EXCLUDED));
-        final ResourceLocation doIngredients = new ResourceLocation(MOD_ID, crafterName.concat(DO_INGREDIENT));
+        final Identifier products = Identifier.fromNamespaceAndPath(MOD_ID, crafterName.concat(PRODUCT));
+        final Identifier ingredients = Identifier.fromNamespaceAndPath(MOD_ID, crafterName.concat(INGREDIENT));
+        final Identifier productsExcluded = Identifier.fromNamespaceAndPath(MOD_ID, crafterName.concat(PRODUCT_EXCLUDED));
+        final Identifier ingredientsExcluded = Identifier.fromNamespaceAndPath(MOD_ID, crafterName.concat(INGREDIENT_EXCLUDED));
+        final Identifier doIngredients = Identifier.fromNamespaceAndPath(MOD_ID, crafterName.concat(DO_INGREDIENT));
 
         crafterProduct.put(crafterName, ItemTags.create(products));
         crafterProductExclusions.put(crafterName, ItemTags.create(productsExcluded));

@@ -14,12 +14,12 @@ import com.minecolonies.core.colony.buildings.moduleviews.CraftingModuleView;
 import com.minecolonies.core.colony.buildings.views.AbstractBuildingView;
 import com.minecolonies.core.network.messages.server.colony.building.worker.AddRemoveRecipeMessage;
 import com.minecolonies.core.util.DomumOrnamentumUtils;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
@@ -41,7 +41,7 @@ import static com.minecolonies.api.util.constant.translation.BaseGameTranslation
  */
 public class WindowFurnaceCrafting extends AbstractContainerScreen<ContainerCraftingFurnace>
 {
-    private static final ResourceLocation CRAFTING_FURNACE = new ResourceLocation(Constants.MOD_ID, "textures/gui/furnace.png");
+    private static final Identifier CRAFTING_FURNACE = Identifier.fromNamespaceAndPath(Constants.MOD_ID, "textures/gui/furnace.png");
 
     /**
      * X offset of the button.
@@ -179,15 +179,14 @@ public class WindowFurnaceCrafting extends AbstractContainerScreen<ContainerCraf
      * Draws the background layer of this container (behind the items).
      */
     @Override
-    protected void renderBg(@NotNull final GuiGraphics stack, final float partialTicks, final int mouseX, final int mouseY)
+    public void extractBackground(@NotNull final GuiGraphicsExtractor stack, final int mouseX, final int mouseY, final float partialTicks)
     {
-        stack.blit(CRAFTING_FURNACE, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight);
+        stack.blit(CRAFTING_FURNACE, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight, 256, 256);
     }
 
     @Override
-    public void render(@NotNull final GuiGraphics stack, int x, int y, float z)
+    public void extractRenderState(@NotNull final GuiGraphicsExtractor stack, final int x, final int y, final float z)
     {
-        super.render(stack, x, y, z);
-        this.renderTooltip(stack, x, y);
+        super.extractRenderState(stack, x, y, z);
     }
 }

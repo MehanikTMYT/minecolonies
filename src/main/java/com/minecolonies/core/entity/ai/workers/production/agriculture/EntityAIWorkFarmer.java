@@ -35,7 +35,7 @@ import com.minecolonies.core.util.citizenutils.CitizenItemUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.InteractionHand;
@@ -106,7 +106,7 @@ public class EntityAIWorkFarmer extends AbstractEntityAICrafting<JobFarmer, Buil
      * Farming icon
      */
     private static final VisibleCitizenStatus FARMING_ICON =
-      new VisibleCitizenStatus(new ResourceLocation(Constants.MOD_ID, "textures/icons/work/farmer.png"), "com.minecolonies.gui.visiblestatus.farmer");
+      new VisibleCitizenStatus(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "textures/icons/work/farmer.png"), "com.minecolonies.gui.visiblestatus.farmer");
 
     /**
      * Changed after finished harvesting in order to dump the inventory.
@@ -377,7 +377,7 @@ public class EntityAIWorkFarmer extends AbstractEntityAICrafting<JobFarmer, Buil
         if (farmField.isNoPartOfField(world, position)
               || (world.getBlockState(position.above()).getBlock() instanceof CropBlock)
               || (world.getBlockState(position.above()).getBlock() instanceof BlockScarecrow)
-              || (!blockState.is(BlockTags.DIRT) && !(blockState.getBlock() instanceof MinecoloniesFarmland) && !(blockState.getBlock() instanceof FarmBlock))
+              || (!blockState.is(BlockTags.DIRT) && !(blockState.getBlock() instanceof MinecoloniesFarmland) && !(blockState.getBlock() instanceof FarmlandBlock))
               ||  isRightFarmLandForCrop(farmField, blockState)
               || (world.getBlockState(position.above()).getBlock() instanceof MinecoloniesCropBlock)
         )
@@ -646,7 +646,7 @@ public class EntityAIWorkFarmer extends AbstractEntityAICrafting<JobFarmer, Buil
         }
         else
         {
-            return blockState.getBlock() instanceof FarmBlock;
+            return blockState.getBlock() instanceof FarmlandBlock;
         }
     }
 

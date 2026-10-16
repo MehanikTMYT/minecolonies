@@ -21,8 +21,6 @@ import net.minecraft.stats.Stats;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.items.wrapper.InvWrapper;
 import java.util.function.Predicate;
 
@@ -48,7 +46,6 @@ public class SuppliesHandler implements ISurvivalBlueprintHandler
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
     public boolean canHandle(final Blueprint blueprint, final ClientLevel clientLevel, final Player player, final BlockPos blockPos, final RotationMirror rotMir)
     {
         return false;

@@ -7,22 +7,24 @@ import com.minecolonies.api.blocks.types.RackType;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.permissions.Action;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.core.tileentities.TileEntityRack;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.*;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
@@ -54,7 +56,7 @@ public class BlockMinecoloniesRack extends AbstractBlockMinecoloniesRack<BlockMi
      * Normal translation we use.
      */
     private static final Long2ObjectMap<Direction> BY_NORMAL = Arrays.stream(Direction.values()).collect(Collectors.toMap((p_235679_) -> {
-        return (new BlockPos(p_235679_.getNormal())).asLong();
+        return (new BlockPos(p_235679_.getUnitVec3i())).asLong();
     }, (p_235675_) -> {
         return p_235675_;
     }, (p_235670_, p_235671_) -> {
@@ -88,13 +90,13 @@ public class BlockMinecoloniesRack extends AbstractBlockMinecoloniesRack<BlockMi
     }
 
     @Override
-    public ResourceLocation getRegistryName()
+    public Identifier getRegistryName()
     {
-        return new ResourceLocation(Constants.MOD_ID, BLOCK_NAME);
+        return Identifier.fromNamespaceAndPath(Constants.MOD_ID, BLOCK_NAME);
     }
 
     @Override
-    public boolean propagatesSkylightDown(final BlockState state, @NotNull final BlockGetter reader, @NotNull final BlockPos pos)
+    protected boolean propagatesSkylightDown(final BlockState state)
     {
         return true;
     }
@@ -150,23 +152,25 @@ public class BlockMinecoloniesRack extends AbstractBlockMinecoloniesRack<BlockMi
 
     @Override
     @NotNull
-    public BlockState updateShape(
+    protected BlockState updateShape(
       @NotNull final BlockState state,
-      @NotNull final Direction dir,
-      final BlockState neighbourState,
-      @NotNull final LevelAccessor level,
+      @NotNull final LevelReader level,
+      @NotNull final ScheduledTickAccess ticks,
       @NotNull final BlockPos pos,
-      @NotNull final BlockPos neighbourPos)
+      @NotNull final Direction dir,
+      @NotNull final BlockPos neighbourPos,
+      final BlockState neighbourState,
+      @NotNull final RandomSource random)
     {
         if (state.getBlock() != this || pos.subtract(neighbourPos).getY() != 0)
         {
-            return super.updateShape(state, dir, neighbourState, level, pos, neighbourPos);
+            return super.updateShape(state, level, ticks, pos, dir, neighbourPos, neighbourState, random);
         }
 
         final BlockEntity here = level.getBlockEntity(pos);
         if (!(here instanceof TileEntityRack hereRack))
         {
-            return super.updateShape(state, dir, neighbourState, level, pos, neighbourPos);
+            return super.updateShape(state, level, ticks, pos, dir, neighbourPos, neighbourState, random);
         }
 
         if (neighbourState.getBlock() != this)
@@ -177,7 +181,7 @@ public class BlockMinecoloniesRack extends AbstractBlockMinecoloniesRack<BlockMi
                 return state.setValue(VARIANT, hereRack.isEmpty() ? RackType.EMPTY : RackType.FULL);
             }
 
-            return super.updateShape(state, dir, neighbourState, level, pos, neighbourPos);
+            return super.updateShape(state, level, ticks, pos, dir, neighbourPos, neighbourState, random);
         }
 
 
@@ -189,14 +193,17 @@ public class BlockMinecoloniesRack extends AbstractBlockMinecoloniesRack<BlockMi
 
             if (!(neighbour instanceof TileEntityRack neighborRack))
             {
-                return super.updateShape(state, dir, neighbourState, level, pos, neighbourPos);
+                return super.updateShape(state, level, ticks, pos, dir, neighbourPos, neighbourState, random);
             }
 
             boolean isEmpty = hereRack.isEmpty() && neighborRack.isEmpty();
 
-            level.setBlock(neighbourPos,
-              neighbourState.setValue(FACING, BY_NORMAL.get(neighbourPos.subtract(pos).asLong()).getOpposite()).setValue(VARIANT, RackType.NO_RENDER),
-              1);
+            if (level instanceof Level mutableLevel)
+            {
+                mutableLevel.setBlock(neighbourPos,
+                  neighbourState.setValue(FACING, BY_NORMAL.get(neighbourPos.subtract(pos).asLong()).getOpposite()).setValue(VARIANT, RackType.NO_RENDER),
+                  1);
+            }
             return state.setValue(VARIANT, isEmpty ? RackType.EMPTY_DOUBLE : RackType.FULL_DOUBLE)
                      .setValue(FACING, BY_NORMAL.get(neighbourPos.subtract(pos).asLong()));
         }
@@ -215,11 +222,11 @@ public class BlockMinecoloniesRack extends AbstractBlockMinecoloniesRack<BlockMi
             }
         }
 
-        return super.updateShape(state, dir, neighbourState, level, pos, neighbourPos);
+        return super.updateShape(state, level, ticks, pos, dir, neighbourPos, neighbourState, random);
     }
 
     @Override
-    public ItemInteractionResult useItemOn(
+    public InteractionResult useItemOn(
       final ItemStack p_316304_,
       final BlockState state,
       final Level worldIn,
@@ -235,14 +242,14 @@ public class BlockMinecoloniesRack extends AbstractBlockMinecoloniesRack<BlockMi
               && tileEntity instanceof TileEntityRack)
         {
             final TileEntityRack rack = (TileEntityRack) tileEntity;
-            if (!worldIn.isClientSide)
+            if (!worldIn.isClientSide())
             {
                 ((ServerPlayer) player).openMenu(rack,
                   buf -> buf.writeBlockPos(rack.getBlockPos()).writeBlockPos(rack.getOtherChest() == null ? BlockPos.ZERO : rack.getOtherChest().getBlockPos()));
             }
-            return ItemInteractionResult.SUCCESS;
+            return InteractionResult.SUCCESS;
         }
-        return ItemInteractionResult.FAIL;
+        return InteractionResult.FAIL;
     }
 
     @Override
@@ -267,24 +274,14 @@ public class BlockMinecoloniesRack extends AbstractBlockMinecoloniesRack<BlockMi
     }
 
     @Override
-    public void onRemove(BlockState state, @NotNull Level worldIn, @NotNull BlockPos pos, BlockState newState, boolean isMoving)
+    protected void affectNeighborsAfterRemoval(
+      final BlockState state,
+      @NotNull final ServerLevel level,
+      @NotNull final BlockPos pos,
+      final boolean movedByPiston)
     {
-        if (state.getBlock() != newState.getBlock())
-        {
-            BlockEntity tileEntity = worldIn.getBlockEntity(pos);
-            if (tileEntity instanceof TileEntityRack)
-            {
-                TileEntityRack tileEntityRack = (TileEntityRack) tileEntity;
-                InventoryUtils.dropItemHandler(tileEntityRack.getInventory(),
-                  worldIn,
-                  tileEntityRack.getBlockPos().getX(),
-                  tileEntityRack.getBlockPos().getY(),
-                  tileEntityRack.getBlockPos().getZ());
-                worldIn.updateNeighbourForOutputSignal(pos, this);
-            }
-
-            super.onRemove(state, worldIn, pos, newState, isMoving);
-        }
+        level.updateNeighbourForOutputSignal(pos, this);
+        super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
     }
 
     @Override

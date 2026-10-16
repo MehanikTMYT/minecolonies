@@ -1,6 +1,7 @@
 package com.minecolonies.core.colony.buildings.moduleviews;
 
 import com.ldtteam.blockui.views.BOWindow;
+import com.minecolonies.api.blocks.ModBlocks;
 import com.minecolonies.api.colony.buildings.modules.AbstractBuildingModuleView;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.core.client.gui.modules.building.GraveyardManagementWindow;
@@ -8,10 +9,8 @@ import com.minecolonies.core.tileentities.TileEntityGrave;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -32,6 +31,12 @@ public class GraveyardManagementModuleView extends AbstractBuildingModuleView
     @NotNull
     private List<String> restingCitizen = new ArrayList<>();
 
+    /**
+     * Contains the burial plot positions registered from this graveyard's schematic.
+     */
+    @NotNull
+    private List<BlockPos> gravePlotPositions = new ArrayList<>();
+
     @Override
     public void deserialize(@NotNull final RegistryFriendlyByteBuf buf)
     {
@@ -49,9 +54,14 @@ public class GraveyardManagementModuleView extends AbstractBuildingModuleView
         {
             restingCitizen.add(buf.readUtf());
         }
-    }
 
-    @OnlyIn(Dist.CLIENT)
+        gravePlotPositions = new ArrayList<>();
+        final int gravePlotCount = buf.readInt();
+        for (int i = 0; i < gravePlotCount; i++)
+        {
+            gravePlotPositions.add(buf.readBlockPos());
+        }
+    }
     @Override
     public BOWindow getWindow()
     {
@@ -59,9 +69,9 @@ public class GraveyardManagementModuleView extends AbstractBuildingModuleView
     }
 
     @Override
-    public ResourceLocation getIconResourceLocation()
+    public Identifier getIconResourceLocation()
     {
-        return new ResourceLocation(Constants.MOD_ID, "textures/gui/modules/grave.png");
+        return Identifier.fromNamespaceAndPath(Constants.MOD_ID, "textures/gui/modules/grave.png");
     }
 
     @Override
@@ -105,5 +115,33 @@ public class GraveyardManagementModuleView extends AbstractBuildingModuleView
     public List<String> getRestingCitizen()
     {
         return Collections.unmodifiableList(restingCitizen);
+    }
+
+    /**
+     * Get the total number of burial plots provided by this graveyard's schematic.
+     *
+     * @return the total number of burial plots.
+     */
+    public int getTotalGravePlotCount()
+    {
+        return gravePlotPositions.size();
+    }
+
+    /**
+     * Count the burial plots currently occupied by named graves.
+     *
+     * @return the number of occupied burial plots.
+     */
+    public int getFilledGravePlotCount()
+    {
+        int filledGravePlots = 0;
+        for (final BlockPos gravePlotPosition : gravePlotPositions)
+        {
+            if (colonyView.getWorld().getBlockState(gravePlotPosition).getBlock() == ModBlocks.blockNamedGrave)
+            {
+                filledGravePlots++;
+            }
+        }
+        return filledGravePlots;
     }
 }

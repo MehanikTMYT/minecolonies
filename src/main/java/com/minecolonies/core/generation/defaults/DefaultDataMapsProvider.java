@@ -6,7 +6,6 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.common.data.DataMapProvider;
 import net.neoforged.neoforge.registries.datamaps.builtin.Compostable;
@@ -27,7 +26,7 @@ public class DefaultDataMapsProvider extends DataMapProvider
     }
 
     @Override
-    protected void gather()
+    protected void gather(final HolderLookup.Provider lookup)
     {
         generateCompostables();
     }
@@ -62,7 +61,11 @@ public class DefaultDataMapsProvider extends DataMapProvider
 
     private static void registerCompostItemFromNutrition(final Builder<Compostable, Item> builder, final Item item, final float factor)
     {
-        final FoodProperties food = item.getFoodProperties(new ItemStack(item), null);
+        // Not new ItemStack(item).get(DataComponents.FOOD): datagen never binds a modded item's default data
+        // components (there's no real world/connection to fire DefaultDataComponentsBoundEvent), so that would
+        // throw "Components not bound yet". ModItems.getFoodProperties reads the same values back from where
+        // they were registered instead.
+        final FoodProperties food = ModItems.getFoodProperties(item);
         if (food != null)
         {
             final float strength = Math.min(1.0f, food.nutrition() / factor);

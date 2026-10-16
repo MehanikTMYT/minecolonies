@@ -241,7 +241,7 @@ public class StandardRetryingRequestResolver implements IRetryingRequestResolver
     @Override
     public MutableComponent getRequesterDisplayName(@NotNull final IRequestManager manager, @NotNull final IRequest<?> request)
     {
-        return Component.literal("Player");
+        return Component.translatable("com.minecolonies.port26.ui.resolver.player");
     }
 
     public void updateData(@NotNull final Map<IToken<?>, Integer> newAssignedRequests, @NotNull final Map<IToken<?>, Integer> newDelays)

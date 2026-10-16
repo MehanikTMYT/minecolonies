@@ -25,11 +25,12 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.component.DataComponentType;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.Entity;
@@ -44,14 +45,13 @@ import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.*;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.item.equipment.Equippable;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BrewingStandBlockEntity;
 import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
 import net.minecraft.world.phys.EntityHitResult;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.common.Tags;
-import net.neoforged.neoforge.common.crafting.SizedIngredient;
+import com.minecolonies.api.research.ResearchIngredient;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -134,7 +134,7 @@ public final class ItemStackUtils
     public static final Predicate<ItemStack> IS_ANY_FOOD =
             stack ->
             {
-                final FoodProperties foodProperties = stack.getFoodProperties(null);
+                final FoodProperties foodProperties = stack.get(DataComponents.FOOD);
                 return ItemStackUtils.isNotEmpty(stack) && foodProperties != null && foodProperties.nutrition() > 0
                         && foodProperties.saturation() > 0;
             };
@@ -196,9 +196,16 @@ public final class ItemStackUtils
             }
             else if (entity instanceof ArmorStand)
             {
-                request.add(new ItemStorage(entity.getPickedResult(new EntityHitResult(placer))));
-                ((ArmorStand) entity).getArmorSlots().forEach(item -> request.add(new ItemStorage(item)));
-                ((ArmorStand) entity).getHandSlots().forEach(item -> request.add(new ItemStorage(item)));
+                final ItemStack picked = entity.getPickResult();
+                if (picked != null)
+                {
+                    request.add(new ItemStorage(picked));
+                }
+                for (final EquipmentSlot slot : List.of(EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD,
+                  EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND))
+                {
+                    request.add(new ItemStorage(((ArmorStand) entity).getItemBySlot(slot)));
+                }
             }
 
             /*
@@ -290,6 +297,71 @@ public final class ItemStackUtils
     }
 
     /**
+     * Get the slot the given stack is worn in, if it is a piece of armor.
+     * <p>
+     * Replaces the removed vanilla {@code ArmorItem} class: wearable equipment is described by the
+     * {@link DataComponents#EQUIPPABLE} component instead of a dedicated item class.
+     *
+     * @param stack the stack to check.
+     * @return the armor slot, or null if the stack is not armor.
+     */
+    @Nullable
+    public static EquipmentSlot getArmorSlot(@NotNull final ItemStack stack)
+    {
+        final Equippable equippable = stack.get(DataComponents.EQUIPPABLE);
+        return equippable != null && equippable.slot().isArmor() ? equippable.slot() : null;
+    }
+
+    /**
+     * Check whether the given stack is a piece of armor.
+     *
+     * @param stack the stack to check.
+     * @return true if it is armor.
+     */
+    public static boolean isArmor(@NotNull final ItemStack stack)
+    {
+        return getArmorSlot(stack) != null;
+    }
+
+    /**
+     * Check whether the given stack is worn in the given armor slot.
+     *
+     * @param stack the stack to check.
+     * @param slot  the slot it has to fit.
+     * @return true if it is armor for that slot.
+     */
+    public static boolean isArmorForSlot(@NotNull final ItemStack stack, @NotNull final EquipmentSlot slot)
+    {
+        return getArmorSlot(stack) == slot;
+    }
+
+    /**
+     * Check whether the given stack is a sword.
+     * <p>
+     * Replaces the removed vanilla {@code SwordItem} class, swords are identified by tag now.
+     *
+     * @param stack the stack to check.
+     * @return true if it is a sword.
+     */
+    public static boolean isSword(@NotNull final ItemStack stack)
+    {
+        return stack.is(ItemTags.SWORDS);
+    }
+
+    /**
+     * Check whether the given stack is a mining tool, i.e. a pickaxe, axe, shovel or hoe.
+     * <p>
+     * Replaces the removed vanilla {@code DiggerItem} class, mining tools are identified by tag now.
+     *
+     * @param stack the stack to check.
+     * @return true if it is a mining tool.
+     */
+    public static boolean isDiggerTool(@NotNull final ItemStack stack)
+    {
+        return stack.is(ItemTags.PICKAXES) || stack.is(ItemTags.AXES) || stack.is(ItemTags.SHOVELS) || stack.is(ItemTags.HOES);
+    }
+
+    /**
      * This routine converts the {@link ItemStackUtils#getArmorValue(ItemStack, EquipmentSlot)}} of an item stack into a given
      * request system level, based on the standard leather - netherite armor levels.
      *
@@ -304,7 +376,8 @@ public final class ItemStackUtils
             return value;
         }
 
-        final EquipmentSlot targetEquipmentSlot = Optional.ofNullable(Equipable.get(itemStack)).map(Equipable::getEquipmentSlot).orElse(EquipmentSlot.MAINHAND);
+        final Equippable equippable = itemStack.get(DataComponents.EQUIPPABLE);
+        final EquipmentSlot targetEquipmentSlot = equippable == null ? EquipmentSlot.MAINHAND : equippable.slot();
         final List<Item> armorItems = VANILLA_ARMOR_MAPPING.get(targetEquipmentSlot);
         if (armorItems == null)
         {
@@ -315,12 +388,14 @@ public final class ItemStackUtils
 
         for (final Item item : armorItems)
         {
-            if (item instanceof ArmorItem armorItem)
+            final ItemStack defaultInstance = item.getDefaultInstance();
+            final EquipmentSlot armorSlot = getArmorSlot(defaultInstance);
+            if (armorSlot != null)
             {
-                final double armorValue = getArmorValue(armorItem.getDefaultInstance(), armorItem.getEquipmentSlot());
+                final double armorValue = getArmorValue(defaultInstance, armorSlot);
                 if (targetArmorLevel <= armorValue)
                 {
-                    return VANILLA_ARMOR_DISTRIBUTION.get(armorItem);
+                    return VANILLA_ARMOR_DISTRIBUTION.get(item);
                 }
             }
         }
@@ -392,7 +467,7 @@ public final class ItemStackUtils
      */
     public static boolean doesItemServeAsWeapon(@NotNull final ItemStack stack)
     {
-        return stack.getItem() instanceof SwordItem || stack.getItem() instanceof DiggerItem || Compatibility.isTinkersWeapon(stack) || stack.getItem() instanceof ItemSpear;
+        return isSword(stack) || isDiggerTool(stack) || Compatibility.isTinkersWeapon(stack) || stack.getItem() instanceof ItemSpear;
     }
 
     /**
@@ -664,7 +739,7 @@ public final class ItemStackUtils
     @NotNull
     public static ItemStack deserializeFromNBT(@NotNull final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
     {
-        return ItemStack.parseOptional(provider, compound);
+        return Utils.parseOptionalItemStack(provider, compound);
     }
 
     /**
@@ -770,7 +845,7 @@ public final class ItemStackUtils
         final Item item;
         try
         {
-            item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+            item = BuiltInRegistries.ITEM.getValue(Identifier.parse(itemId));
         }
         catch (Throwable t)
         {
@@ -811,7 +886,7 @@ public final class ItemStackUtils
      */
     @NotNull
     public static Tuple<Boolean, String> parseIdTemplate(@Nullable String itemId,
-                                                         @NotNull final ResourceLocation baseItemId)
+                                                         @NotNull final Identifier baseItemId)
     {
         if (itemId == null)
         {
@@ -828,7 +903,7 @@ public final class ItemStackUtils
             return baseItemId.getPath();
         });
 
-        return new Tuple<>(BuiltInRegistries.ITEM.containsKey(ResourceLocation.parse(itemId)), itemId);
+        return new Tuple<>(BuiltInRegistries.ITEM.containsKey(Identifier.parse(itemId)), itemId);
     }
 
     /**
@@ -854,7 +929,7 @@ public final class ItemStackUtils
         final Set<ItemStorage> allItems = new HashSet<>(IColonyManager.getInstance().getCompatibilityManager().getSetOfAllItems());
 
         // plus all items from the player's inventory not already listed (adds items with extra NBT)
-        for (final ItemStack stack : player.getInventory().items)
+        for (final ItemStack stack : player.getInventory())
         {
             if (stack.isEmpty())
             {
@@ -941,15 +1016,14 @@ public final class ItemStackUtils
      * @param ingredient the ingredient to check.
      * @return the friendly name.
      */
-    @OnlyIn(Dist.CLIENT)
-    public static Component getTranslatedName(@NotNull final SizedIngredient ingredient)
+    public static Component getTranslatedName(@NotNull final ResearchIngredient ingredient)
     {
-        if (ingredient.ingredient().hasNoItems())
+        if (ingredient.ingredient().isEmpty())
         {
             return Component.empty();
         }
 
-        final ItemStack[] items = ingredient.getItems();
+        final ItemStack[] items = ingredient.ingredient().items().map(ItemStack::new).toArray(ItemStack[]::new);
         final Optional<TagKey<Item>> tag = getTagEquivalent(items);
 
         return Component.translatable("%sx %s", ingredient.count(), tag.map(t ->
@@ -964,10 +1038,10 @@ public final class ItemStackUtils
         {
             if (items.length == 1)
             {
-                return items[0].getItem().getDescription();
+                return items[0].getItem().getName(items[0]);
             }
             return Component.translatable(String.join("/", Collections.nCopies(items.length, "%s")),
-                    Arrays.stream(items).map(ItemStack::getItem).map(Item::getDescription).toArray());
+                    Arrays.stream(items).map(stack -> stack.getItem().getName(stack)).toArray());
         }));
     }
 
@@ -990,10 +1064,9 @@ public final class ItemStackUtils
         return BuiltInRegistries.ITEM.getTags()
                 .filter(e ->
                 {
-                    HolderSet.Named<Item> tag = e.getSecond();
-                    return areEquivalent(tag, values);
+                    return areEquivalent(e, values);
                 })
-                .map(Pair::getFirst)
+                .map(HolderSet.Named::key)
                 .findFirst();
     }
 
@@ -1039,9 +1112,8 @@ public final class ItemStackUtils
         }
         catch (final Exception e)
         {
-            Log.getLogger().warn("Could not get attribute value for '{}' on item '{}'", attribute.value().getDescriptionId(), itemStack.getDescriptionId(), e);
+            Log.getLogger().warn("Could not get attribute value for '{}' on item '{}'", attribute.value().getDescriptionId(), itemStack.getItem().getDescriptionId(), e);
             return 0;
         }
     }
 }
-

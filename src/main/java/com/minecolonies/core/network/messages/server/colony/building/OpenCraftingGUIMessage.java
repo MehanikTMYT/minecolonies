@@ -71,7 +71,7 @@ public class OpenCraftingGUIMessage extends AbstractBuildingServerMessage<IBuild
                     @Override
                     public Component getDisplayName()
                     {
-                        return Component.literal("Furnace Crafting GUI");
+                        return Component.translatable("com.minecolonies.port26.ui.crafting.furnace");
                     }
 
                     @NotNull
@@ -90,7 +90,7 @@ public class OpenCraftingGUIMessage extends AbstractBuildingServerMessage<IBuild
                     @Override
                     public Component getDisplayName()
                     {
-                        return Component.literal("Brewing Crafting GUI");
+                        return Component.translatable("com.minecolonies.port26.ui.crafting.brewing");
                     }
 
                     @NotNull
@@ -109,7 +109,7 @@ public class OpenCraftingGUIMessage extends AbstractBuildingServerMessage<IBuild
                       @Override
                       public Component getDisplayName()
                       {
-                          return Component.literal("Crafting GUI");
+                          return Component.translatable("com.minecolonies.port26.ui.crafting.crafting");
                       }
 
                       @NotNull

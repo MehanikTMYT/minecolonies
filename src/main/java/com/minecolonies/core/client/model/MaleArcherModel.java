@@ -3,6 +3,7 @@
 // Paste this class into your mod and generate all required imports
 package com.minecolonies.core.client.model;
 
+import com.minecolonies.api.client.render.modeltype.CitizenRenderState;
 import com.minecolonies.api.client.render.modeltype.CitizenModel;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import net.minecraft.client.model.HumanoidModel;
@@ -13,7 +14,7 @@ import org.jetbrains.annotations.NotNull;
 
 import static com.minecolonies.core.entity.ai.workers.guard.EntityAIRange.RENDER_META_ARROW;
 
-public class MaleArcherModel extends CitizenModel<AbstractEntityCitizen>
+public class MaleArcherModel extends CitizenModel
 {
 
     public MaleArcherModel(final ModelPart part)
@@ -75,10 +76,10 @@ public class MaleArcherModel extends CitizenModel<AbstractEntityCitizen>
     }
 
     @Override
-    public void setupAnim(@NotNull final AbstractEntityCitizen entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch)
+    public void setupAnim(@NotNull final CitizenRenderState state)
     {
-        super.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
-        head.getChild("SailorHat1").visible = isWorking(entity) && displayHat(entity);
-        body.getChild("quiver").visible = entity.getRenderMetadata().contains(RENDER_META_ARROW);
+        super.setupAnim(state);
+        head.getChild("SailorHat1").visible = isWorking(state) && displayHat(state);
+        body.getChild("quiver").visible = state.renderMetadata.contains(RENDER_META_ARROW);
     }
 }

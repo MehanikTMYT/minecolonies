@@ -1,5 +1,9 @@
 package com.minecolonies.core.entity.other;
 
+import org.jetbrains.annotations.NotNull;
+import com.minecolonies.api.util.ValueIOUtils;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.api.loot.ModLootTables;
 import net.minecraft.core.BlockPos;
@@ -35,8 +39,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.entity.IEntityWithComplexSpawn;
 
 import javax.annotation.Nullable;
@@ -68,7 +70,6 @@ public class NewBobberEntity extends Projectile implements IEntityWithComplexSpa
     private NewBobberEntity(EntityType<? extends Projectile> type, Level level, int luck, int lure)
     {
         super(type, level);
-        this.noCulling = true;
         this.luck = Math.max(0, luck);
         this.lureSpeed = Math.max(0, lure);
     }
@@ -91,7 +92,7 @@ public class NewBobberEntity extends Projectile implements IEntityWithComplexSpa
         double d0 = citizen.getX() - (double)f3 * 0.3;
         double d1 = citizen.getEyeY();
         double d2 = citizen.getZ() - (double)f2 * 0.3;
-        this.moveTo(d0, d1, d2, f1, f);
+        this.snapTo(d0, d1, d2, f1, f);
         Vec3 vec3 = new Vec3((double)(-f3), (double)Mth.clamp(-(f5 / f4), -5.0F, 5.0F), (double)(-f2));
         double d3 = vec3.length();
         vec3 = vec3.multiply(
@@ -132,21 +133,19 @@ public class NewBobberEntity extends Projectile implements IEntityWithComplexSpa
     /**
      * Checks if the entity is in range to render.
      */
-    @OnlyIn(Dist.CLIENT)
     public boolean shouldRenderAtSqrDistance(final double distance)
     {
         return distance < 4096.0D;
     }
 
-    @OnlyIn(Dist.CLIENT)
     @Override
-    public void lerpTo(
-      final double x,
-      final double y,
-      final double z,
-      final float yaw,
-      final float pitch,
-      final int posRotationIncrements) { }
+    protected void lerpPositionAndRotationStep(
+      final int stepsToTarget,
+      final double targetX,
+      final double targetY,
+      final double targetZ,
+      final double targetYRot,
+      final double targetXRot) { }
 
     @Override
     public void tick() {
@@ -155,7 +154,7 @@ public class NewBobberEntity extends Projectile implements IEntityWithComplexSpa
         AbstractEntityCitizen citizen = (AbstractEntityCitizen) this.getOwner();
         if (citizen == null) {
             this.discard();
-        } else if (this.level().isClientSide || !this.shouldStopFishing(citizen)) {
+        } else if (this.level().isClientSide() || !this.shouldStopFishing(citizen)) {
             if (this.onGround()) {
                 this.life++;
                 if (this.life >= 1200) {
@@ -225,7 +224,7 @@ public class NewBobberEntity extends Projectile implements IEntityWithComplexSpa
                             );
                         }
 
-                        if (!this.level().isClientSide) {
+                        if (!this.level().isClientSide()) {
                             this.catchingFish(blockpos);
                         }
                     } else {
@@ -283,7 +282,7 @@ public class NewBobberEntity extends Projectile implements IEntityWithComplexSpa
     protected void onHitEntity(EntityHitResult hitEntity)
     {
         super.onHitEntity(hitEntity);
-        if (!this.level().isClientSide) {
+        if (!this.level().isClientSide()) {
             this.setHookedEntity(hitEntity.getEntity());
         }
     }
@@ -482,13 +481,33 @@ public class NewBobberEntity extends Projectile implements IEntityWithComplexSpa
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag tag)
+    protected void addAdditionalSaveData(@NotNull final ValueOutput output)
+    {
+        super.addAdditionalSaveData(output);
+        final CompoundTag saveTag = new CompoundTag();
+        addAdditionalSaveDataTag(saveTag);
+        ValueIOUtils.writeAsTag(output, saveTag);
+    }
+
+    /**
+     * Writes the entity save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void addAdditionalSaveDataTag(final CompoundTag tag)
     {
 
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag tag)
+    protected void readAdditionalSaveData(@NotNull final ValueInput input)
+    {
+        super.readAdditionalSaveData(input);
+        readAdditionalSaveDataTag(ValueIOUtils.readAsTag(input));
+    }
+
+    /**
+     * Reads the entity save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void readAdditionalSaveDataTag(final CompoundTag tag)
     {
 
     }
@@ -496,7 +515,7 @@ public class NewBobberEntity extends Projectile implements IEntityWithComplexSpa
     public int retrieve(ItemStack p_37157_)
     {
         AbstractEntityCitizen citizen = (AbstractEntityCitizen) this.getOwner();
-        if (!this.level().isClientSide && citizen != null && !this.shouldStopFishing(citizen))
+        if (!this.level().isClientSide() && citizen != null && !this.shouldStopFishing(citizen))
         {
             int i = 0;
             if (this.hookedEntity != null)
@@ -548,7 +567,7 @@ public class NewBobberEntity extends Projectile implements IEntityWithComplexSpa
     @Override
     public void handleEntityEvent(byte b)
     {
-        if (b == 31 && this.level().isClientSide && this.hookedEntity instanceof Player && ((Player)this.hookedEntity).isLocalPlayer())
+        if (b == 31 && this.level().isClientSide() && this.hookedEntity instanceof Player && ((Player)this.hookedEntity).isLocalPlayer())
         {
             this.pullEntity(this.hookedEntity);
         }

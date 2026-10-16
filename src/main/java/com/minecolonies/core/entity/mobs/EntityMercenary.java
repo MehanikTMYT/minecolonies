@@ -1,5 +1,8 @@
 package com.minecolonies.core.entity.mobs;
 
+import com.minecolonies.api.util.ValueIOUtils;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.level.storage.ValueInput;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.IColonyRelated;
@@ -25,14 +28,16 @@ import net.minecraft.util.Tuple;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
-import net.minecraft.world.entity.animal.horse.Llama;
+import net.minecraft.world.entity.animal.equine.Llama;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.npc.Npc;
@@ -146,7 +151,7 @@ public class EntityMercenary extends AbstractFastMinecoloniesEntity implements N
         this.goalSelector.addGoal(0, new FloatGoal(this));
         this.goalSelector.addGoal(1, new EntityMercenaryAI(this));
         this.goalSelector.addGoal(4, new EntityAIInteractToggleAble(this, FENCE_TOGGLE, TRAP_TOGGLE, DOOR_TOGGLE));
-        this.targetSelector.addGoal(5, new NearestAttackableTargetGoal<>(this, Monster.class, 10, true, false, e -> e instanceof Enemy && !(e instanceof Llama)));
+        this.targetSelector.addGoal(5, new NearestAttackableTargetGoal<>(this, Monster.class, 10, true, false, (e, level) -> e instanceof Enemy && !(e instanceof Llama)));
 
         setCustomNameVisible(true);
         this.setPersistenceRequired();
@@ -324,26 +329,44 @@ public class EntityMercenary extends AbstractFastMinecoloniesEntity implements N
     }
 
     @Override
-    public void addAdditionalSaveData(final CompoundTag compound)
+    protected void addAdditionalSaveData(@NotNull final ValueOutput output)
+    {
+        super.addAdditionalSaveData(output);
+        final CompoundTag saveTag = new CompoundTag();
+        addAdditionalSaveDataTag(saveTag);
+        ValueIOUtils.writeAsTag(output, saveTag);
+    }
+
+    /**
+     * Writes the entity save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void addAdditionalSaveDataTag(final CompoundTag compound)
     {
         compound.putLong(TAG_TIME, worldTimeAtSpawn);
         compound.putInt(TAG_COLONY_ID, this.colony == null ? 0 : colony.getID());
-        super.addAdditionalSaveData(compound);
     }
 
     @Override
-    public void readAdditionalSaveData(final CompoundTag compound)
+    protected void readAdditionalSaveData(@NotNull final ValueInput input)
     {
-        worldTimeAtSpawn = compound.getLong(TAG_TIME);
+        super.readAdditionalSaveData(input);
+        readAdditionalSaveDataTag(ValueIOUtils.readAsTag(input));
+    }
+
+    /**
+     * Reads the entity save data, which keeps using the tag layout existing worlds are written in.
+     */
+    protected void readAdditionalSaveDataTag(final CompoundTag compound)
+    {
+        worldTimeAtSpawn = compound.getLongOr(TAG_TIME, 0L);
         if (compound.contains(TAG_COLONY_ID))
         {
-            colonyId = compound.getInt(TAG_COLONY_ID);
+            colonyId = compound.getIntOr(TAG_COLONY_ID, 0);
             if (colonyId != 0)
             {
                 setColony(IColonyManager.getInstance().getColonyByWorld(colonyId, level()));
             }
         }
-        super.readAdditionalSaveData(compound);
     }
 
     @Override
@@ -390,13 +413,13 @@ public class EntityMercenary extends AbstractFastMinecoloniesEntity implements N
     }
 
     @Override
-    public boolean hurt(final DamageSource source, final float damage)
+    public boolean hurtServer(final ServerLevel level, final DamageSource source, final float damage)
     {
         if (source.getEntity() instanceof LivingEntity)
         {
             this.setTarget((LivingEntity) source.getEntity());
         }
-        return super.hurt(source, damage);
+        return super.hurtServer(level, source, damage);
     }
 
     @Override
@@ -453,7 +476,7 @@ public class EntityMercenary extends AbstractFastMinecoloniesEntity implements N
     @Override
     public void aiStep()
     {
-        if (level() != null && !level().isClientSide)
+        if (level() != null && !level().isClientSide())
         {
             stateMachine.tick();
         }
@@ -496,7 +519,7 @@ public class EntityMercenary extends AbstractFastMinecoloniesEntity implements N
         final List<EntityMercenary> soldiers = new ArrayList<>();
         for (int i = 0; i < amountOfMercenaries; i++)
         {
-            final EntityMercenary merc = (EntityMercenary) ModEntities.MERCENARY.create(world);
+            final EntityMercenary merc = (EntityMercenary) ModEntities.MERCENARY.create(world, EntitySpawnReason.EVENT);
             merc.setColony(colony);
             merc.setPos(spawn.getX() + i, spawn.getY(), spawn.getZ());
             merc.setDoSpawnEvent();
@@ -505,7 +528,7 @@ public class EntityMercenary extends AbstractFastMinecoloniesEntity implements N
         }
 
         // spawn leader for the event.
-        final EntityMercenary merc = (EntityMercenary) ModEntities.MERCENARY.create(world);
+        final EntityMercenary merc = (EntityMercenary) ModEntities.MERCENARY.create(world, EntitySpawnReason.EVENT);
         merc.setColony(colony);
         merc.setPos(spawn.getX(), spawn.getY(), spawn.getZ() + 1);
         merc.setLeader(soldiers);

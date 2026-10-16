@@ -1,10 +1,7 @@
 package com.minecolonies.core.entity.ai.workers.production.herders;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.reflect.TypeToken;
 import com.minecolonies.api.colony.IAnimalData;
-import com.minecolonies.api.colony.requestsystem.request.IRequest;
-import com.minecolonies.api.colony.requestsystem.requestable.Stack;
 import com.minecolonies.api.colony.requestsystem.requestable.StackList;
 import com.minecolonies.api.entity.ai.JobStatus;
 import com.minecolonies.api.entity.ai.statemachine.AITarget;
@@ -27,14 +24,14 @@ import com.minecolonies.core.entity.other.cavalry.CavalryHorseEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.entity.animal.horse.AbstractHorse;
+import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -90,7 +87,7 @@ public class EntityAIWorkStablemaster extends AbstractEntityAIHerder<JobStablema
      * Get horse icon
      */
     private final static VisibleCitizenStatus FIND_HORSE =
-      new VisibleCitizenStatus(new ResourceLocation(Constants.MOD_ID, "textures/icons/work/stablemaster.png"), "com.minecolonies.gui.visiblestatus.stablemaster");
+      new VisibleCitizenStatus(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "textures/icons/work/stablemaster.png"), "com.minecolonies.gui.visiblestatus.stablemaster");
 
     /**
      * Creates the abstract part of the AI. Always use this constructor!
@@ -132,7 +129,7 @@ public class EntityAIWorkStablemaster extends AbstractEntityAIHerder<JobStablema
                 Entity holder = horseToRetrieve.getLeashHolder();
                 if (holder != null && holder.equals(worker)) 
                 {
-                    horseToRetrieve.dropLeash(true, false);
+                    horseToRetrieve.removeLeash();
                 }
             }
         }
@@ -363,6 +360,19 @@ public class EntityAIWorkStablemaster extends AbstractEntityAIHerder<JobStablema
         // ... and then get it ready for combat!
         if (horseToGetReady != null)
         {
+            if (horseToGetReady.needsHealthTraining())
+            {
+                if (horseToGetReady.applyHealthTraining())
+                {
+                    effectsAtHorse(horseToGetReady);
+                    worker.getCitizenExperienceHandler().addExperience(XP_PER_ACTION);
+                    incrementActionsDone();
+                }
+
+                horseToGetReady = null;
+                return DECIDE;
+            }
+
             boolean didWork = false;
 
             if (horseToGetReady.getHealth() < horseToGetReady.getMaxHealth())
@@ -399,7 +409,7 @@ public class EntityAIWorkStablemaster extends AbstractEntityAIHerder<JobStablema
         {
             if (a instanceof CavalryHorseEntity cav)
             {
-                if (cav.getCombatCooldown() > 0 || cav.getHealth() < cav.getMaxHealth())
+                if (cav.needsHealthTraining() || cav.getCombatCooldown() > 0 || cav.getHealth() < cav.getMaxHealth())
                 {
                     horseToGetReady = cav;
                     return HERDER_READY_FOR_COMBAT;
@@ -465,8 +475,9 @@ public class EntityAIWorkStablemaster extends AbstractEntityAIHerder<JobStablema
 
             if (task == MountMaintenance.READYING)
             {   
-                // TODO: Research to influence readiness recovery rate?
-                if (stackToUse.getItem() == Items.SADDLE)
+                float combatCooldownBefore = horse.getAnimalData().getCombatCooldown();
+
+                if (stackToUse.getItem() == Items.LEATHER_HORSE_ARMOR)
                 {
                     horse.getAnimalData().setCombatCooldown(0);
                 }
@@ -529,7 +540,7 @@ public class EntityAIWorkStablemaster extends AbstractEntityAIHerder<JobStablema
         if (didSomething)
         {
             horse.gameEvent(GameEvent.EAT);
-            horse.level().playSound(null, horse, SoundEvents.GENERIC_EAT, SoundSource.NEUTRAL, 0.8f, 1.0f);
+            horse.level().playSound(null, horse.blockPosition(), SoundEvents.GENERIC_EAT.value(), SoundSource.NEUTRAL, 0.8f, 1.0f);
         }
         return didSomething;
     }
@@ -579,8 +590,8 @@ public class EntityAIWorkStablemaster extends AbstractEntityAIHerder<JobStablema
             {
                 if (!walkToSafePos(building.getNextStallPosition())) 
                 {
-                    horseToRetrieve.clearRestriction();
-                    horseToRetrieve.restrictTo(worker.blockPosition(), 3);
+                    horseToRetrieve.clearHome();
+                    horseToRetrieve.setHomeTo(worker.blockPosition(), 3);
                     return HERDER_GATHER_MOUNTS;
                 }
                 
@@ -668,7 +679,7 @@ public class EntityAIWorkStablemaster extends AbstractEntityAIHerder<JobStablema
         // If leashed to somebody else, drop that leash first
         if (horse.isLeashed())
         {
-            horse.dropLeash(true, true);
+            horse.dropLeash();
         }
 
         if (worker.getOffhandItem().isEmpty())
@@ -677,7 +688,7 @@ public class EntityAIWorkStablemaster extends AbstractEntityAIHerder<JobStablema
         }
 
         horse.setLeashedTo(worker, true);
-        horse.restrictTo(worker.blockPosition(), 3);
+        horse.setHomeTo(worker.blockPosition(), 3);
 
         return true;
     }
@@ -691,19 +702,19 @@ public class EntityAIWorkStablemaster extends AbstractEntityAIHerder<JobStablema
      */
     public void detachHorse(AbstractHorse horse)
     {
-        if (worker == null || horse == null || horse.level().isClientSide)
+        if (worker == null || horse == null || horse.level().isClientSide())
         {
             return;
         }
 
-        horse.clearRestriction();
+        horse.clearHome();
 
         if (!horse.isLeashed())
         {
             return;
         } 
 
-        horse.dropLeash(true, false);
+        horse.removeLeash();
 
         if (worker.getOffhandItem().is(Items.LEAD))
         {

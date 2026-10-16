@@ -8,12 +8,12 @@ import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.Lifecycle;
 import net.minecraft.core.*;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.level.storage.loot.LootTable;
-import net.neoforged.neoforge.common.data.ExistingFileHelper;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
@@ -26,30 +26,30 @@ import java.util.stream.Stream;
 public class DatagenLootTableManager implements HolderLookup.Provider
 {
     private final HolderLookup.Provider baseProvider;
-    private final ExistingFileHelper    existingFileHelper;
+    private final ResourceManager       resourceManager;
     private final Registry<LootTable>   registry = new DynamicLoadingRegistry<>(Registries.LOOT_TABLE, Lifecycle.stable(), false, LootTable.DIRECT_CODEC);
 
     public DatagenLootTableManager(@NotNull final HolderLookup.Provider baseProvider,
-                                   @NotNull final ExistingFileHelper existingFileHelper)
+                                   @NotNull final ResourceManager resourceManager)
     {
         this.baseProvider = baseProvider;
-        this.existingFileHelper = existingFileHelper;
+        this.resourceManager = resourceManager;
     }
 
     @NotNull
     @Override
-    public Stream<ResourceKey<? extends Registry<?>>> listRegistries()
+    public Stream<ResourceKey<? extends Registry<?>>> listRegistryKeys()
     {
-        return baseProvider.listRegistries();
+        return baseProvider.listRegistryKeys();
     }
 
     @NotNull
     @Override
-    public <T> Optional<HolderLookup.RegistryLookup<T>> lookup(@NotNull final ResourceKey<? extends Registry<? extends T>> registryId)
+    public <T> Optional<? extends HolderLookup.RegistryLookup<T>> lookup(@NotNull final ResourceKey<? extends Registry<? extends T>> registryId)
     {
         if (registryId.equals(Registries.LOOT_TABLE))
         {
-            return Optional.of((HolderLookup.RegistryLookup<T>) registry.asLookup());
+            return Optional.of((HolderLookup.RegistryLookup<T>) registry);
         }
 
         return baseProvider.lookup(registryId);
@@ -83,11 +83,11 @@ public class DatagenLootTableManager implements HolderLookup.Provider
 
         @NotNull
         @Override
-        public Optional<Holder.Reference<T>> getHolder(@NotNull final ResourceKey<T> id)
+        public Optional<Holder.Reference<T>> get(@NotNull final ResourceKey<T> id)
         {
             if (super.containsKey(id))
             {
-                return super.getHolder(id);
+                return super.get(id);
             }
 
             final Optional<T> table = dynamicLoad(id);
@@ -98,9 +98,18 @@ public class DatagenLootTableManager implements HolderLookup.Provider
         {
             try
             {
-                final Resource resource = existingFileHelper.getResource(id.location(), PackType.SERVER_DATA, ".json", Registries.elementsDirPath(key()));
+                final Identifier element = id.identifier();
+                final Identifier path = Identifier.fromNamespaceAndPath(element.getNamespace(),
+                  Registries.elementsDirPath(key()) + "/" + element.getPath() + ".json");
+
+                final Optional<Resource> resource = resourceManager.getResource(path);
+                if (resource.isEmpty())
+                {
+                    return Optional.empty();
+                }
+
                 final DynamicOps<JsonElement> ops = createSerializationContext(JsonOps.INSTANCE);
-                try (final var reader = resource.openAsReader())
+                try (final var reader = resource.get().openAsReader())
                 {
                     final JsonElement json = JsonParser.parseReader(reader);
                     return Optional.of(codec.decode(ops, json).getOrThrow().getFirst());

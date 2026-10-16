@@ -1,9 +1,5 @@
 package com.minecolonies.core.client.render.worldevent;
 
-import com.ldtteam.blockui.util.color.ColourARGB;
-import com.ldtteam.blockui.util.color.ColourQuartet;
-import com.ldtteam.blockui.util.color.ColouredVertexConsumer;
-import com.ldtteam.blockui.util.color.IColour;
 import com.ldtteam.structurize.items.ModItems;
 import com.ldtteam.structurize.util.WorldRenderMacros;
 import com.minecolonies.api.IMinecoloniesAPI;
@@ -11,19 +7,14 @@ import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.IColonyView;
 import com.minecolonies.api.colony.claim.IChunkClaimData;
 import com.minecolonies.core.MineColonies;
-import com.minecolonies.core.util.MutableChunkPos;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.MeshData;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexBuffer;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.GameRenderer;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class ColonyBorderRenderer
@@ -32,8 +23,8 @@ public class ColonyBorderRenderer
     private static final int CHUNK_SIZE = 16;
     private static final int PLAYER_CHUNK_STEP = CHUNK_SIZE / 4;
 
-    private static VertexBuffer colonies           = null;
-    private static VertexBuffer chunktickets       = null;
+    private static List<BorderLine> colonies = List.of();
+    private static List<BorderLine> chunktickets = List.of();
     private static ChunkPos                     lastPlayerChunkPos = null;
     private static IColonyView lastColony = null;
 
@@ -44,9 +35,9 @@ public class ColonyBorderRenderer
             return;
         }
 
-        final ChunkPos playerChunkPos = new ChunkPos(ctx.clientPlayer.blockPosition());
+        final ChunkPos playerChunkPos = ChunkPos.containing(ctx.clientPlayer.blockPosition());
 
-        if (lastColony != ctx.nearestColony || !lastPlayerChunkPos.equals(playerChunkPos))
+        if (lastColony != ctx.nearestColony || !playerChunkPos.equals(lastPlayerChunkPos))
         {
             lastColony = ctx.nearestColony;
             lastPlayerChunkPos = playerChunkPos;
@@ -61,7 +52,7 @@ public class ColonyBorderRenderer
             {
                 for (int chunkZ = -range; chunkZ <= range; chunkZ++)
                 {
-                    final LevelChunk chunk = ctx.clientLevel.getChunk(playerChunkPos.x + chunkX, playerChunkPos.z + chunkZ);
+                    final LevelChunk chunk = ctx.clientLevel.getChunk(playerChunkPos.x() + chunkX, playerChunkPos.z() + chunkZ);
                     if (chunk.isEmpty()) { continue; }
                     final ChunkPos chunkPos = chunk.getPos();
 
@@ -71,7 +62,7 @@ public class ColonyBorderRenderer
                         coloniesMap.put(chunkPos, cap.getOwningColony());
                     }
 
-                    if (ctx.nearestColony.getTicketedChunks().contains(chunkPos.toLong()))
+                    if (ctx.nearestColony.getTicketedChunks().contains(chunkPos.pack()))
                     {
                         chunkticketsMap.put(chunkPos, nearestColonyId);
                     }
@@ -82,62 +73,47 @@ public class ColonyBorderRenderer
                 }
             }
 
-            if (colonies != null)
-            {
-                colonies.close();
-            }
-            if (chunktickets != null)
-            {
-                chunktickets.close();
-            }
             colonies = draw(ctx, coloniesMap, nearestColonyId, playerChunkPos, playerRenderDist);
             chunktickets = draw(ctx, chunkticketsMap, nearestColonyId, playerChunkPos, playerRenderDist);
         }
 
-        final VertexBuffer p = Screen.hasControlDown() ? chunktickets : colonies;
-        if (p == null)
+        final List<BorderLine> lines = ctx.mc.hasControlDown() ? chunktickets : colonies;
+        if (lines.isEmpty())
         {
             return;
         }
 
         ctx.pushPoseCameraToPos(lastPlayerChunkPos.getWorldPosition());
-        ctx.pushShaderMvMatrixFromPose();
-        WorldRenderMacros.LINES.setupRenderState();
-        p.bind();
-        p.drawWithShader(RenderSystem.getModelViewMatrix(), RenderSystem.getProjectionMatrix(), GameRenderer.getPositionColorShader());
-        VertexBuffer.unbind();
-        WorldRenderMacros.LINES.clearRenderState();
-        ctx.popShaderMvMatrix();
+        final VertexConsumer buffer = ctx.bufferSource.getBuffer(WorldRenderMacros.LINES);
+        lines.forEach(line -> line.submit(ctx.poseStack.last().pose(), buffer));
         ctx.popPose();
     }
 
-    private static VertexBuffer draw(final WorldEventContext ctx,
+    private static List<BorderLine> draw(final WorldEventContext ctx,
         final Map<ChunkPos, Integer> mapToDraw,
         final int playerColonyId,
         final ChunkPos playerChunkPos,
         final int playerRenderDist)
     {
-        final MutableChunkPos mutableChunkPos = new MutableChunkPos(0, 0);
-        final Map<Integer, IColour> colonyColours = new HashMap<>();
+        final Map<Integer, Integer> colonyColours = new HashMap<>();
         final boolean useColonyColour = IMinecoloniesAPI.getInstance().getConfig().getClient().colonyteamborders.get();
 
-        final BufferBuilder bufferbuilder = Tesselator.getInstance().begin(WorldRenderMacros.LINES.mode(), WorldRenderMacros.LINES.format());
-        final ColouredVertexConsumer buf = new ColouredVertexConsumer(bufferbuilder);
+        final LineCollector buf = new LineCollector();
         mapToDraw.forEach((chunkPos, colonyId) -> {
-            if (colonyId == 0 || chunkPos.x <= playerChunkPos.x - playerRenderDist || chunkPos.x >= playerChunkPos.x + playerRenderDist
-                || chunkPos.z <= playerChunkPos.z - playerRenderDist || chunkPos.z >= playerChunkPos.z + playerRenderDist)
+            if (colonyId == 0 || chunkPos.x() <= playerChunkPos.x() - playerRenderDist || chunkPos.x() >= playerChunkPos.x() + playerRenderDist
+                || chunkPos.z() <= playerChunkPos.z() - playerRenderDist || chunkPos.z() >= playerChunkPos.z() + playerRenderDist)
             {
                 return;
             }
 
-            final boolean isPlayerChunkX = colonyId == playerColonyId && chunkPos.x == playerChunkPos.x;
-            final boolean isPlayerChunkZ = colonyId == playerColonyId && chunkPos.z == playerChunkPos.z;
+            final boolean isPlayerChunkX = colonyId == playerColonyId && chunkPos.x() == playerChunkPos.x();
+            final boolean isPlayerChunkZ = colonyId == playerColonyId && chunkPos.z() == playerChunkPos.z();
             final float minX = chunkPos.getMinBlockX() - playerChunkPos.getMinBlockX();
             final float maxX = chunkPos.getMaxBlockX() - playerChunkPos.getMinBlockX() + 1.0f;
             final float minZ = chunkPos.getMinBlockZ() - playerChunkPos.getMinBlockZ();
             final float maxZ = chunkPos.getMaxBlockZ() - playerChunkPos.getMinBlockZ() + 1.0f;
-            final int minY = ctx.clientLevel.getMinBuildHeight();
-            final int maxY = ctx.clientLevel.getMaxBuildHeight();
+            final int minY = ctx.clientLevel.getMinY();
+            final int maxY = ctx.clientLevel.getMaxY();
             final int testedColonyId = colonyId;
 
             if (useColonyColour)
@@ -147,31 +123,23 @@ public class ColonyBorderRenderer
                     final IColonyView colony = IMinecoloniesAPI.getInstance().getColonyManager().getColonyView(id, ctx.clientLevel.dimension());
                     final ChatFormatting team = colony != null ? colony.getTeamColonyColor()
                             : id == playerColonyId ? ChatFormatting.WHITE : ChatFormatting.RED;
-                    return new ColourARGB(team.getColor() | 0xff000000).asQuartet();
+                    return (team.getColor() == null ? 0xffffff : team.getColor()) | 0xff000000;
                 });
             }
             else if (colonyId == playerColonyId)
             {
-                buf.defaultColor = new ColourQuartet(255, 255, 255, 255);
+                buf.defaultColor = 0xffffffff;
             }
             else
             {
-                buf.defaultColor = new ColourQuartet(255, 70, 70, 255);
+                buf.defaultColor = 0xffff4646;
             }
 
-            mutableChunkPos.setX(chunkPos.x);
-            mutableChunkPos.setZ(chunkPos.z - 1);
-            final boolean north = mapToDraw.getOrDefault(mutableChunkPos, -1) != testedColonyId;
-
-            mutableChunkPos.setZ(chunkPos.z + 1);
-            final boolean south = mapToDraw.getOrDefault(mutableChunkPos, -1) != testedColonyId;
-
-            mutableChunkPos.setX(chunkPos.x + 1);
-            mutableChunkPos.setZ(chunkPos.z);
-            final boolean east = mapToDraw.getOrDefault(mutableChunkPos, -1) != testedColonyId;
-
-            mutableChunkPos.setX(chunkPos.x - 1);
-            final boolean west = mapToDraw.getOrDefault(mutableChunkPos, -1) != testedColonyId;
+            // ChunkPos is a record now, so the neighbours have to be allocated instead of reusing a mutable key.
+            final boolean north = mapToDraw.getOrDefault(new ChunkPos(chunkPos.x(), chunkPos.z() - 1), -1) != testedColonyId;
+            final boolean south = mapToDraw.getOrDefault(new ChunkPos(chunkPos.x(), chunkPos.z() + 1), -1) != testedColonyId;
+            final boolean east = mapToDraw.getOrDefault(new ChunkPos(chunkPos.x() + 1, chunkPos.z()), -1) != testedColonyId;
+            final boolean west = mapToDraw.getOrDefault(new ChunkPos(chunkPos.x() - 1, chunkPos.z()), -1) != testedColonyId;
 
             // vert lines
             if (north || west)
@@ -294,17 +262,7 @@ public class ColonyBorderRenderer
             }
         });
 
-        final MeshData renderedBuffer = bufferbuilder.build();
-        if (renderedBuffer == null)
-        {
-            return null;
-        }
-        // create bytebuffer copy since buffer builder uses slice
-        final VertexBuffer vertexBuffer = new VertexBuffer(VertexBuffer.Usage.STATIC);
-        vertexBuffer.bind();
-        vertexBuffer.upload(renderedBuffer);
-        VertexBuffer.unbind();
-        return vertexBuffer;
+        return List.copyOf(buf.lines);
     }
 
     /**
@@ -312,15 +270,50 @@ public class ColonyBorderRenderer
      */
     public static void cleanup()
     {
-        if (colonies != null)
-        {
-            colonies.close();
-        }
-        if (chunktickets != null)
-        {
-            chunktickets.close();
-        }
+        colonies = List.of();
+        chunktickets = List.of();
         lastColony = null;
         lastPlayerChunkPos = null;
+    }
+
+    private record BorderLine(float x1, float y1, float z1, float x2, float y2, float z2, int color)
+    {
+        private void submit(final org.joml.Matrix4f matrix, final VertexConsumer buffer)
+        {
+            buffer.addVertex(matrix, x1, y1, z1).setColor(color);
+            buffer.addVertex(matrix, x2, y2, z2).setColor(color);
+        }
+    }
+
+    private static final class LineCollector
+    {
+        private final List<BorderLine> lines = new ArrayList<>();
+        private int defaultColor;
+        private float x;
+        private float y;
+        private float z;
+        private boolean hasFirst;
+
+        private LineCollector addVertex(final float x, final float y, final float z)
+        {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            return this;
+        }
+
+        private void setDefaultColor()
+        {
+            if (hasFirst)
+            {
+                final BorderLine first = lines.remove(lines.size() - 1);
+                lines.add(new BorderLine(first.x1, first.y1, first.z1, x, y, z, defaultColor));
+            }
+            else
+            {
+                lines.add(new BorderLine(x, y, z, 0, 0, 0, defaultColor));
+            }
+            hasFirst = !hasFirst;
+        }
     }
 }

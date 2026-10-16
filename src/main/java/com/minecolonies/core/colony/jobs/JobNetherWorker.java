@@ -1,5 +1,6 @@
 package com.minecolonies.core.colony.jobs;
 
+import com.minecolonies.api.util.Utils;
 import com.minecolonies.api.client.render.modeltype.ModModelTypes;
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.core.entity.ai.workers.production.EntityAIWorkNether;
@@ -7,7 +8,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
@@ -63,13 +64,13 @@ public class JobNetherWorker extends AbstractJobCrafter<EntityAIWorkNether, JobN
 
         @NotNull final ListTag craftedList = new ListTag();
         craftedResults.forEach(item -> {
-            craftedList.add(item.saveOptional(provider));
+            craftedList.add(Utils.saveOptionalItemStack(provider, item));
         });
         compound.put(TAG_CRAFTED, craftedList);
 
         @NotNull final ListTag processedList = new ListTag();
         processedResults.forEach(item -> {
-            processedList.add(item.saveOptional(provider));
+            processedList.add(Utils.saveOptionalItemStack(provider, item));
         });
         compound.put(TAG_PROCESSED, processedList);
 
@@ -82,24 +83,24 @@ public class JobNetherWorker extends AbstractJobCrafter<EntityAIWorkNether, JobN
     {
         super.deserializeNBT(provider, compound);
 
-        final ListTag craftedList = compound.getList(TAG_CRAFTED, CompoundTag.TAG_COMPOUND);
+        final ListTag craftedList = compound.getListOrEmpty(TAG_CRAFTED);
         for (int i = 0; i < craftedList.size(); ++i)
         {
-            final CompoundTag itemCompound = craftedList.getCompound(i);
-            craftedResults.add(ItemStack.parseOptional(provider, itemCompound));
+            final CompoundTag itemCompound = craftedList.getCompoundOrEmpty(i);
+            craftedResults.add(Utils.parseOptionalItemStack(provider, itemCompound));
         }
 
-        final ListTag processedList = compound.getList(TAG_PROCESSED, CompoundTag.TAG_COMPOUND);
+        final ListTag processedList = compound.getListOrEmpty(TAG_PROCESSED);
         for (int i = 0; i < processedList.size(); ++i)
         {
-            final CompoundTag itemCompound = processedList.getCompound(i);
-            processedResults.add(ItemStack.parseOptional(provider, itemCompound));
+            final CompoundTag itemCompound = processedList.getCompoundOrEmpty(i);
+            processedResults.add(Utils.parseOptionalItemStack(provider, itemCompound));
         }
 
 
         if (compound.contains(TAG_IN_NETHER))
         {
-            citizenInNether = compound.getBoolean(TAG_IN_NETHER);
+            citizenInNether = compound.getBooleanOr(TAG_IN_NETHER, false);
         }
     }
 
@@ -111,7 +112,7 @@ public class JobNetherWorker extends AbstractJobCrafter<EntityAIWorkNether, JobN
 
     @NotNull
     @Override
-    public ResourceLocation getModel()
+    public Identifier getModel()
     {
         return ModModelTypes.NETHERWORKER_ID;
     }

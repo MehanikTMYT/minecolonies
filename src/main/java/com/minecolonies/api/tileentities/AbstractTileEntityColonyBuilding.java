@@ -13,7 +13,7 @@ import com.minecolonies.core.tileentities.TileEntityRack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Tuple;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -191,7 +191,7 @@ public abstract class AbstractTileEntityColonyBuilding extends TileEntityRack im
      *
      * @return The buildings name.
      */
-    public abstract ResourceLocation getBuildingName();
+    public abstract Identifier getBuildingName();
 
     @Override
     public String getSchematicName()
@@ -263,11 +263,11 @@ public abstract class AbstractTileEntityColonyBuilding extends TileEntityRack im
     }
 
     @Override
-    public void loadAdditional(@NotNull final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
+    protected void loadAdditionalTag(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
     {
-        super.loadAdditional(compound, provider);
+        super.loadAdditionalTag(compound, provider);
         readSchematicDataFromNBT(compound);
-        this.version = compound.getInt(TAG_VERSION);
+        this.version = compound.getIntOr(TAG_VERSION, 0);
     }
 
     @Override
@@ -276,7 +276,7 @@ public abstract class AbstractTileEntityColonyBuilding extends TileEntityRack im
         final String old = getSchematicName();
         IBlueprintDataProviderBE.super.readSchematicDataFromNBT(originalCompound);
 
-        if (level == null || level.isClientSide || getColony() == null || getColony().getServerBuildingManager() == null)
+        if (level == null || level.isClientSide() || getColony() == null || getColony().getServerBuildingManager() == null)
         {
             return;
         }
@@ -290,9 +290,9 @@ public abstract class AbstractTileEntityColonyBuilding extends TileEntityRack im
     }
 
     @Override
-    public void saveAdditional(@NotNull final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
+    protected void saveAdditionalTag(final CompoundTag compound, @NotNull final HolderLookup.Provider provider)
     {
-        super.saveAdditional(compound, provider);
+        super.saveAdditionalTag(compound, provider);
         writeSchematicDataToNBT(compound);
         compound.putInt(TAG_VERSION, this.version);
     }

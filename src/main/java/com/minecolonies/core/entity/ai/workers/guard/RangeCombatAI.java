@@ -30,13 +30,13 @@ import com.minecolonies.core.entity.pathfinding.pathjobs.PathJobMoveToLocation;
 import com.minecolonies.core.entity.pathfinding.pathresults.PathResult;
 import com.minecolonies.core.util.citizenutils.CitizenItemUtils;
 import net.minecraft.network.chat.contents.TranslatableContents;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.ArrowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
@@ -61,7 +61,7 @@ public class RangeCombatAI extends AttackMoveAI<EntityCitizen>
      * Visible combat icon
      */
     private final static VisibleCitizenStatus ARCHER_COMBAT =
-      new VisibleCitizenStatus(new ResourceLocation(Constants.MOD_ID, "textures/icons/work/archer_combat.png"), "com.minecolonies.gui.visiblestatus.archer_combat");
+      new VisibleCitizenStatus(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "textures/icons/work/archer_combat.png"), "com.minecolonies.gui.visiblestatus.archer_combat");
 
     private final AbstractEntityAIGuard parentAI;
 
@@ -196,7 +196,10 @@ public class RangeCombatAI extends AttackMoveAI<EntityCitizen>
 
             if (user.getCitizenColonyHandler().getColonyOrRegister().getResearchManager().getResearchEffects().getEffectStrength(ARROW_PIERCE) > 0)
             {
-                arrow.setPierceLevel((byte) 2);
+                if (arrow instanceof final CustomArrowEntity customArrow)
+                {
+                    customArrow.setResearchPierceLevel((byte) 2);
+                }
             }
 
             // Add bow enchant effects: Knocback and fire
@@ -208,10 +211,6 @@ public class RangeCombatAI extends AttackMoveAI<EntityCitizen>
             }
 
             double damage = calculateDamage(arrow);
-            if (isMarksman())
-            {
-                arrow.shotFromCrossbow();
-            }
             arrow.setBaseDamage(damage);
 
             final float chance = HIT_CHANCE_DIVIDER / (user.getCitizenData().getCitizenSkillHandler().getLevel(Skill.Adaptability) + 1);
@@ -296,7 +295,11 @@ public class RangeCombatAI extends AttackMoveAI<EntityCitizen>
                             if (isMarksman())
                             {
                                 // Calculate true damage from reduced arrow damage.
-                                entityRayTraceResult.getEntity().hurt(target.level().damageSources().source(DamageSourceKeys.PIERCE, user), (float) arrow.getBaseDamage() * (float) marksManTrueDamageShare() * 10);
+                                // The callback runs when the arrow lands, long after this method returned. The captured
+                                // 'target' may be gone by then, so derive the level/damage source from the shooter.
+                                entityRayTraceResult.getEntity().hurtServer((ServerLevel) user.level(),
+                                  user.level().damageSources().source(DamageSourceKeys.PIERCE, user),
+                                  (float) customArrowEntity.getConfiguredBaseDamage() * (float) marksManTrueDamageShare() * 10);
                             }
 
                             return true;

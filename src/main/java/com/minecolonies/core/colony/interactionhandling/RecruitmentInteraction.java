@@ -20,12 +20,10 @@ import com.minecolonies.api.util.StatsUtil;
 import com.minecolonies.api.util.Tuple;
 import com.minecolonies.api.util.constant.Constants;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.items.wrapper.InvWrapper;
 import java.util.Collections;
 import java.util.List;
@@ -50,7 +48,7 @@ public class RecruitmentInteraction extends ServerCitizenInteraction
     /**
      * The icon's res location which is displayed for this interaction
      */
-    private static final ResourceLocation icon = new ResourceLocation(Constants.MOD_ID, "textures/icons/recruiticon.png");
+    private static final Identifier icon = Identifier.fromNamespaceAndPath(Constants.MOD_ID, "textures/icons/recruiticon.png");
 
     /**
      * The recruit answer
@@ -93,17 +91,15 @@ public class RecruitmentInteraction extends ServerCitizenInteraction
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
     public void onWindowOpened(final BOWindow window, final ICitizenDataView dataView)
     {
         final ButtonImage recruitButton = window.findPaneOfTypeByID(BUTTON_RESPONSE_ID + 2, ButtonImage.class);
         final Box group = window.findPaneOfTypeByID(RESPONSE_BOX_ID, Box.class);
 
-
         if (recruitButton != null && dataView instanceof IVisitorViewData visitorViewData)
         {
             final ItemStack recruitCost = visitorViewData.getRecruitCost();
-            final IColonyView colony = (IColonyView) dataView.getColony();
+            final IColonyView colony = dataView.getColony();
 
             window.findPaneOfTypeByID(CHAT_LABEL_ID, Text.class).setText(PaneBuilders.textBuilder()
                 .append(Component.literal(dataView.getName() + ": "))
@@ -129,7 +125,6 @@ public class RecruitmentInteraction extends ServerCitizenInteraction
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
     public boolean onClientResponseTriggered(final int responseId, final Player player, final ICitizenDataView data, final BOWindow window)
     {
         final Component response = getPossibleResponses().get(responseId);
@@ -169,7 +164,7 @@ public class RecruitmentInteraction extends ServerCitizenInteraction
 
                     final IBuilding tavern = colony.getServerBuildingManager().getFirstBuildingMatching(b -> b.getBuildingType() == ModBuildings.tavern.get());
                     
-                    if (colony.getWorld().random.nextInt(100) <= BAD_VISITOR_CHANCE)
+                    if (colony.getWorld().getRandom().nextInt(100) <= BAD_VISITOR_CHANCE)
                     {
                         StatsUtil.trackStat(tavern, VISITORS_ABSCONDED, 1);
                         colony.getStatisticsManager().increment(VISITORS_ABSCONDED, colony.getDay());
@@ -210,7 +205,7 @@ public class RecruitmentInteraction extends ServerCitizenInteraction
     }
 
     @Override
-    public ResourceLocation getInteractionIcon()
+    public Identifier getInteractionIcon()
     {
         return icon;
     }

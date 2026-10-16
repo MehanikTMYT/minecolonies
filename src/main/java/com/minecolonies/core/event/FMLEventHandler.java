@@ -1,13 +1,16 @@
 package com.minecolonies.core.event;
 
 import com.minecolonies.api.colony.IColonyManager;
+import static com.minecolonies.api.util.constant.Constants.MOD_ID;
 import com.minecolonies.core.datalistener.*;
 import com.minecolonies.core.entity.pathfinding.Pathfinding;
+import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.core.util.BackUpHelper;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.event.AddReloadListenerEvent;
+import net.neoforged.neoforge.event.AddServerReloadListenersEvent;
+import net.neoforged.neoforge.event.DefaultDataComponentsBoundEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
@@ -22,16 +25,21 @@ import org.jetbrains.annotations.NotNull;
 public class FMLEventHandler
 {
     @SubscribeEvent
+    public static void onDefaultDataComponentsBound(final DefaultDataComponentsBoundEvent event)
+    {
+        CrafterRecipeListener.applyPendingRecipes();
+        RecruitmentItemsListener.bindPendingRecruitCosts();
+        CustomVisitorListener.bindPendingVisitors();
+        QuestJsonListener.bindPendingQuests();
+        DiseasesListener.applyPendingDiseases();
+        ModEquipmentTypes.initRegisterEquipmentTiers();
+    }
+
+    @SubscribeEvent
     public static void onServerTick(final ServerTickEvent.Pre event)
     {
         IColonyManager.getInstance().onServerTick(event);
         DataPackSyncEventHandler.ServerEvents.load(event.getServer());
-    }
-
-    @SubscribeEvent
-    public static void onClientTick(final ClientTickEvent.Pre event)
-    {
-        IColonyManager.getInstance().onClientTick(event);
     }
 
     @SubscribeEvent
@@ -46,17 +54,17 @@ public class FMLEventHandler
     }
 
     @SubscribeEvent
-    public static void onAddReloadListenerEvent(@NotNull final AddReloadListenerEvent event)
+    public static void onAddReloadListenerEvent(@NotNull final AddServerReloadListenersEvent event)
     {
-        event.addListener(new CrafterRecipeListener());
-        event.addListener(new ResearchListener());
-        event.addListener(new CustomVisitorListener());
-        event.addListener(new CitizenNameListener());
-        event.addListener(new QuestJsonListener());
-        event.addListener(new ItemNbtListener());
-        event.addListener(StudyItemListener.INSTANCE);
-        event.addListener(new DiseasesListener());
-        event.addListener(new RecruitmentItemsListener());
+        event.addListener(Identifier.fromNamespaceAndPath(MOD_ID, "crafter_recipes"), new CrafterRecipeListener());
+        event.addListener(Identifier.fromNamespaceAndPath(MOD_ID, "research"), new ResearchListener());
+        event.addListener(Identifier.fromNamespaceAndPath(MOD_ID, "custom_visitor"), new CustomVisitorListener());
+        event.addListener(Identifier.fromNamespaceAndPath(MOD_ID, "citizen_name"), new CitizenNameListener());
+        event.addListener(Identifier.fromNamespaceAndPath(MOD_ID, "quest_json"), new QuestJsonListener());
+        event.addListener(Identifier.fromNamespaceAndPath(MOD_ID, "item_nbt"), new ItemNbtListener());
+        event.addListener(Identifier.fromNamespaceAndPath(MOD_ID, "study_item"), StudyItemListener.INSTANCE);
+        event.addListener(Identifier.fromNamespaceAndPath(MOD_ID, "diseases"), new DiseasesListener());
+        event.addListener(Identifier.fromNamespaceAndPath(MOD_ID, "recruitment_items"), new RecruitmentItemsListener());
     }
 
     @SubscribeEvent

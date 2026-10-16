@@ -1,13 +1,13 @@
 package com.minecolonies.api.client.render.modeltype;
 
-import com.minecolonies.api.entity.mobs.AbstractEntityMinecoloniesMonster;
+import com.minecolonies.core.client.render.mobs.RaiderRenderState;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelPart;
 
 /**
  * Norsemen model.
  */
-public class NorsemenModel extends HumanoidModel<AbstractEntityMinecoloniesMonster>
+public class NorsemenModel extends HumanoidModel<RaiderRenderState>
 {
     /**
      * Create a model of a specific size.

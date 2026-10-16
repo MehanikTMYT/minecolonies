@@ -85,6 +85,7 @@ public class ServerConfiguration extends AbstractConfiguration
     public final DoubleValue  guardDamageMultiplier;
     public final DoubleValue  guardHealthMult;
     public final BooleanValue pvp_mode;
+    public final BooleanValue protectRegisteredBuildings;
 
     /*  ----------------------------------------------------------------------------- *
      *  ------------------- ######## Permission Settings ######## ------------------- *
@@ -174,17 +175,18 @@ public class ServerConfiguration extends AbstractConfiguration
 
         swapToCategory("combat");
 
-        enableColonyRaids = defineBoolean("dobarbariansspawn", true);
-        raidDifficulty = defineInteger("barbarianhordedifficulty", DEFAULT_BARBARIAN_DIFFICULTY, MIN_BARBARIAN_DIFFICULTY, MAX_BARBARIAN_DIFFICULTY);
-        maxRaiders = defineInteger("maxBarbarianSize", 80, MIN_BARBARIAN_HORDE_SIZE, MAX_BARBARIAN_HORDE_SIZE);
-        raidersbreakblocks = defineBoolean("dobarbariansbreakthroughwalls", true);
+        enableColonyRaids = defineBoolean("enablecolonyraids", true);
+        raidDifficulty = defineInteger("raidDifficulty", DEFAULT_BARBARIAN_DIFFICULTY, MIN_BARBARIAN_DIFFICULTY, MAX_BARBARIAN_DIFFICULTY);
+        maxRaiders = defineInteger("maxRaiders", 80, MIN_BARBARIAN_HORDE_SIZE, MAX_BARBARIAN_HORDE_SIZE);
+        raidersbreakblocks = defineBoolean("raidersbreakblocks", true);
         averageNumberOfNightsBetweenRaids = defineInteger("averagenumberofnightsbetweenraids", 14, 1, 50);
         minimumNumberOfNightsBetweenRaids = defineInteger("minimumnumberofnightsbetweenraids", 10, 1, 30);
         mobAttackCitizens = defineBoolean("mobattackcitizens", true);
-        raidersbreakdoors = defineBoolean("shouldraiderbreakdoors", true);
+        raidersbreakdoors = defineBoolean("raidersbreakdoors", true);
         guardDamageMultiplier = defineDouble("guardDamageMultiplier", 1.0, 0.1, 15.0);
         guardHealthMult = defineDouble("guardhealthmult", 1.0, 0.1, 5.0);
         pvp_mode = defineBoolean("pvp_mode", false);
+        protectRegisteredBuildings = defineBoolean("protect_registered_buildings", true);
 
         swapToCategory("permissions");
 

@@ -1,8 +1,9 @@
 package com.minecolonies.api.crafting.registry;
 
 import com.minecolonies.api.crafting.IGenericRecipe;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.world.item.crafting.RecipeMap;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -15,9 +16,9 @@ import java.util.Objects;
  */
 public abstract class CraftingType
 {
-    private ResourceLocation registryName;
+    private Identifier registryName;
 
-    protected CraftingType(@NotNull final ResourceLocation id)
+    protected CraftingType(@NotNull final Identifier id)
     {
         this.registryName = id;
     }
@@ -29,8 +30,25 @@ public abstract class CraftingType
      * @return the list of teachable recipes
      */
     @NotNull
-    public abstract List<IGenericRecipe> findRecipes(@NotNull final RecipeManager recipeManager,
-                                                     @Nullable final Level world);
+    public List<IGenericRecipe> findRecipes(
+      @NotNull final RecipeManager recipeManager,
+      @Nullable final Level world)
+    {
+        return findRecipes(RecipeMap.create(recipeManager.getRecipes()), world);
+    }
+
+    /**
+     * Find all teachable recipes supported by this crafting type from a
+     * synchronized recipe map.
+     *
+     * @param recipeMap the available recipes.
+     * @param world     the world, if available.
+     * @return the list of teachable recipes.
+     */
+    @NotNull
+    public abstract List<IGenericRecipe> findRecipes(
+      @NotNull final RecipeMap recipeMap,
+      @Nullable final Level world);
 
     @Override
     public boolean equals(Object obj)

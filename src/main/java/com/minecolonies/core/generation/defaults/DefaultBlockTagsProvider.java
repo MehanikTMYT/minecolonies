@@ -4,13 +4,14 @@ import com.minecolonies.api.blocks.ModBlocks;
 import com.minecolonies.api.items.ModTags;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.TagKey;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.common.Tags;
 import net.neoforged.neoforge.common.data.BlockTagsProvider;
-import net.neoforged.neoforge.common.data.ExistingFileHelper;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
@@ -23,10 +24,9 @@ public class DefaultBlockTagsProvider extends BlockTagsProvider
 
     public DefaultBlockTagsProvider(
       final PackOutput output,
-      final CompletableFuture<HolderLookup.Provider> lookupProvider,
-      @Nullable final ExistingFileHelper existingFileHelper)
+      final CompletableFuture<HolderLookup.Provider> lookupProvider)
     {
-        super(output, lookupProvider, MOD_ID, existingFileHelper);
+        super(output, lookupProvider, MOD_ID);
     }
 
     @Override
@@ -139,7 +139,7 @@ public class DefaultBlockTagsProvider extends BlockTagsProvider
                 .add(Blocks.MANGROVE_ROOTS);
 
         tag(ModTags.extraTree)
-                .addOptionalTag(new ResourceLocation("productivebees", "nests/wood_nests"));
+                .addOptionalTag(TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("productivebees", "nests/wood_nests")));
 
         // sadly forge doesn't provide the block form of this tag, despite providing an item tag
         tag(ModTags.mushroomBlocks)
@@ -161,7 +161,7 @@ public class DefaultBlockTagsProvider extends BlockTagsProvider
                 .addTag(ModTags.extraTree);
 
         tag(ModTags.colonyProtectionException)
-                .addOptionalTag(ResourceLocation.fromNamespaceAndPath("waystones", "waystones"));
+                .addOptionalTag(TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("waystones", "waystones")));
 
         tag(ModTags.indestructible).add(Blocks.BEDROCK);
         tag(ModTags.oreChanceBlocks)

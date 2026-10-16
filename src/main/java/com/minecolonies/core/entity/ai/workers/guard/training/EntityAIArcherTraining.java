@@ -14,10 +14,11 @@ import com.minecolonies.core.colony.buildings.workerbuildings.BuildingArchery;
 import com.minecolonies.core.colony.jobs.JobArcherTraining;
 import com.minecolonies.core.util.citizenutils.CitizenItemUtils;
 import com.minecolonies.core.util.WorkerUtil;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.MoverType;
-import net.minecraft.world.entity.projectile.Arrow;
+import net.minecraft.world.entity.projectile.arrow.Arrow;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
@@ -71,7 +72,7 @@ public class EntityAIArcherTraining extends AbstractEntityAITraining<JobArcherTr
      * Shooting icon
      */
     private final static VisibleCitizenStatus ARCHER_TRAIN =
-      new VisibleCitizenStatus(new ResourceLocation(Constants.MOD_ID, "textures/icons/work/archer_uni.png"), "com.minecolonies.gui.visiblestatus.archer_uni");
+      new VisibleCitizenStatus(Identifier.fromNamespaceAndPath(Constants.MOD_ID, "textures/icons/work/archer_uni.png"), "com.minecolonies.gui.visiblestatus.archer_uni");
 
     /**
      * Current target to shoot at.
@@ -170,7 +171,7 @@ public class EntityAIArcherTraining extends AbstractEntityAITraining<JobArcherTr
             WorkerUtil.faceBlock(currentShootingTarget, worker);
             worker.swing(InteractionHand.MAIN_HAND);
 
-            final Arrow arrow = ModEntities.MC_NORMAL_ARROW.create(world);
+            final Arrow arrow = ModEntities.MC_NORMAL_ARROW.create(world, EntitySpawnReason.TRIGGERED);
             arrow.setBaseDamage(0);
             arrow.setOwner(worker);
             arrow.setPos(worker.getX(), worker.getY() + 1, worker.getZ());

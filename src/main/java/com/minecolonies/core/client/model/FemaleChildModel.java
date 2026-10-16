@@ -10,7 +10,7 @@ import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.*;
 import net.minecraft.client.model.HumanoidModel;
 
-public class FemaleChildModel extends CitizenModel<AbstractEntityCitizen>
+public class FemaleChildModel extends CitizenModel
 {
 
     public FemaleChildModel(final ModelPart part)

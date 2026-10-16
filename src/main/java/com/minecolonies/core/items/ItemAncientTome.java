@@ -3,7 +3,9 @@ package com.minecolonies.core.items;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
@@ -25,10 +27,10 @@ public class ItemAncientTome extends AbstractItemMinecolonies
     }
 
     @Override
-    public void inventoryTick(final ItemStack stack, final Level worldIn, final Entity entityIn, final int itemSlot, final boolean isSelected)
+    public void inventoryTick(final ItemStack stack, final ServerLevel worldIn, final Entity entityIn, final EquipmentSlot itemSlot)
     {
-        super.inventoryTick(stack, worldIn, entityIn, itemSlot, isSelected);
-        if (!worldIn.isClientSide)
+        super.inventoryTick(stack, worldIn, entityIn, itemSlot);
+        if (!worldIn.isClientSide())
         {
             final IColony colony = IColonyManager.getInstance().getClosestColony(worldIn, entityIn.blockPosition());
             if (colony != null)

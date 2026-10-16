@@ -53,7 +53,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeColor;
@@ -63,8 +63,6 @@ import net.minecraft.world.level.block.entity.BannerPatternLayers;
 import net.minecraft.world.level.block.entity.BannerPatterns;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.jetbrains.annotations.NotNull;
@@ -282,7 +280,7 @@ public final class ColonyView implements IColonyView
     {
         //  General Attributes
         buf.writeUtf(colony.getName());
-        buf.writeUtf(colony.getDimension().location().toString());
+        buf.writeUtf(colony.getDimension().identifier().toString());
         buf.writeBlockPos(colony.getCenter());
         //  Citizenry
         buf.writeInt(colony.getCitizenManager().getMaxCitizens());
@@ -656,7 +654,6 @@ public final class ColonyView implements IColonyView
      * @param isNewSubscription Whether this is a new subscription of not.
      * @return null == no response.
      */
-    @OnlyIn(Dist.CLIENT)
     @Override
     public void handleColonyViewMessage(@NotNull final RegistryFriendlyByteBuf buf, final boolean isNewSubscription)
     {
@@ -664,7 +661,7 @@ public final class ColonyView implements IColonyView
 
         //  General Attributes
         name = buf.readUtf(32767);
-        dimensionId = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(buf.readUtf(32767)));
+        dimensionId = ResourceKey.create(Registries.DIMENSION, Identifier.parse(buf.readUtf(32767)));
         center = buf.readBlockPos();
         //  Citizenry
         citizenCount = buf.readInt();
@@ -684,7 +681,8 @@ public final class ColonyView implements IColonyView
         final int blockListSize = buf.readInt();
         for (int i = 0; i < blockListSize; i++)
         {
-            freeBlocks.add(BuiltInRegistries.BLOCK.get(ResourceLocation.parse((buf.readUtf(32767)))));
+            final Identifier id = Identifier.parse(buf.readUtf(32767));
+            freeBlocks.add(BuiltInRegistries.BLOCK.get(id).orElseThrow(() -> new IllegalArgumentException("Unknown free block: " + id)).value());
         }
 
         final int posListSize = buf.readInt();
@@ -763,10 +761,8 @@ public final class ColonyView implements IColonyView
             colonyClaimData.put(pos, chunkClaimData);
         }
 
-        if (Minecraft.getInstance().getSingleplayerServer() == null)
-        {
-            IColonyManager.getInstance().addClaimData(this, colonyClaimData);
-        }
+        // PORT(26.1): the client keeps its own claim map now (see ColonyManager), also in singleplayer
+        IColonyManager.getInstance().addClaimData(this, colonyClaimData);
 
         this.graveManager.read(buf.readNbt());
         this.statisticManager.deserialize(buf);
@@ -1051,7 +1047,6 @@ public final class ColonyView implements IColonyView
         return lastContactInHours;
     }
 
-    @OnlyIn(Dist.CLIENT)
     @Override
     public Level getWorld()
     {

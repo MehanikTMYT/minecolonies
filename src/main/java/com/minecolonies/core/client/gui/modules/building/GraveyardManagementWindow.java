@@ -12,7 +12,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.NotNull;
 
@@ -52,6 +52,16 @@ public class GraveyardManagementWindow extends AbstractModuleWindow<GraveyardMan
     private static final String TAG_DIRECTION = "dir";
 
     /**
+     * Id of the burial plot statistics label inside the GUI.
+     */
+    private static final String TAG_PLOT_STATISTICS = "plotStatistics";
+
+    /**
+     * Translation key for the burial plot statistics label.
+     */
+    private static final String PLOT_STATISTICS = "com.minecolonies.coremod.gui.workerhuts.graveyard.plotsfilled";
+
+    /**
      * The world.
      */
     private final ClientLevel world = Minecraft.getInstance().level;
@@ -63,13 +73,14 @@ public class GraveyardManagementWindow extends AbstractModuleWindow<GraveyardMan
      */
     public GraveyardManagementWindow(final GraveyardManagementModuleView moduleView)
     {
-        super(moduleView, new ResourceLocation(Constants.MOD_ID, "gui/layouthuts/layoutgraveyard.xml"));
+        super(moduleView, Identifier.fromNamespaceAndPath(Constants.MOD_ID, "gui/layouthuts/layoutgraveyard.xml"));
     }
 
     @Override
     public void onOpened()
     {
         super.onOpened();
+        updatePlotStatistics();
 
         /*
          * ScrollList with the graves.
@@ -92,10 +103,10 @@ public class GraveyardManagementWindow extends AbstractModuleWindow<GraveyardMan
                 final BlockEntity entity = world.getBlockEntity(grave);
                 if (entity instanceof TileEntityGrave)
                 {
-                    rowPane.findPaneOfTypeByID(TAG_NAME, Text.class).setText(Component.literal("Grave of " +
+                    rowPane.findPaneOfTypeByID(TAG_NAME, Text.class).setText(Component.translatable("com.minecolonies.port26.ui.grave.of",
                             ((((TileEntityGrave) entity).getGraveData() != null) ?
-                             ((TileEntityGrave) entity).getGraveData().getCitizenName() :
-                             "Unknown Citizen")));
+                             Component.literal(((TileEntityGrave) entity).getGraveData().getCitizenName()) :
+                             Component.translatable("com.minecolonies.port26.ui.grave.unknown"))));
                     rowPane.findPaneOfTypeByID(TAG_DISTANCE, Text.class).setText(Component.literal(distance + "m"));
                     rowPane.findPaneOfTypeByID(TAG_DIRECTION, Text.class).setText(direction);
                 }
@@ -128,5 +139,15 @@ public class GraveyardManagementWindow extends AbstractModuleWindow<GraveyardMan
     {
         super.onUpdate();
         moduleView.cleanGraves();
+        updatePlotStatistics();
+    }
+
+    /**
+     * Update the displayed number of occupied and total burial plots.
+     */
+    private void updatePlotStatistics()
+    {
+        findPaneOfTypeByID(TAG_PLOT_STATISTICS, Text.class).setText(Component.translatable(PLOT_STATISTICS,
+          moduleView.getFilledGravePlotCount(), moduleView.getTotalGravePlotCount()));
     }
 }

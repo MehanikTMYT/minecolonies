@@ -28,8 +28,6 @@ import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
@@ -75,7 +73,7 @@ public class ChunkCache implements LevelReader
             {
                 if (WorldUtil.isEntityChunkLoaded(world, new ChunkPos(k, l)) && worldIn.getChunkSource() instanceof ServerChunkCache serverChunkCache)
                 {
-                    final ChunkHolder holder = serverChunkCache.chunkMap.getVisibleChunkIfPresent(ChunkPos.asLong(k, l));
+                    final ChunkHolder holder = serverChunkCache.chunkMap.getVisibleChunkIfPresent(ChunkPos.pack(k, l));
                     if (holder != null)
                     {
                         this.chunkArray[k - this.chunkX][l - this.chunkZ] = (LevelChunk) holder.getChunkIfPresent(ChunkStatus.FULL);
@@ -85,8 +83,8 @@ public class ChunkCache implements LevelReader
         }
         this.dimType = worldIn.dimensionType();
 
-        minBuildHeight = worldIn.getMinBuildHeight();
-        maxBuildHeight = worldIn.getMaxBuildHeight();
+        minBuildHeight = worldIn.getMinY();
+        maxBuildHeight = worldIn.getMaxY();
     }
 
     /**
@@ -94,7 +92,6 @@ public class ChunkCache implements LevelReader
      *
      * @return if so.
      */
-    @OnlyIn(Dist.CLIENT)
     public boolean isEmpty()
     {
         return this.empty;
@@ -120,22 +117,22 @@ public class ChunkCache implements LevelReader
     }
 
     @Override
-    public int getMinBuildHeight()
+    public int getMinY()
     {
         return minBuildHeight;
     }
 
     @Override
-    public int getMaxBuildHeight()
+    public int getHeight()
     {
-        return maxBuildHeight;
+        return maxBuildHeight - minBuildHeight + 1;
     }
 
     @NotNull
     @Override
     public BlockState getBlockState(BlockPos pos)
     {
-        if (pos.getY() >= getMinBuildHeight() && pos.getY() < getMaxBuildHeight())
+        if (pos.getY() >= getMinY() && pos.getY() < getMaxY())
         {
             int i = (pos.getX() >> 4) - this.chunkX;
             int j = (pos.getZ() >> 4) - this.chunkZ;
@@ -158,7 +155,7 @@ public class ChunkCache implements LevelReader
     @Override
     public FluidState getFluidState(final BlockPos pos)
     {
-        if (pos.getY() >= getMinBuildHeight() && pos.getY() < getMaxBuildHeight())
+        if (pos.getY() >= getMinY() && pos.getY() < getMaxY())
         {
             int i = (pos.getX() >> 4) - this.chunkX;
             int j = (pos.getZ() >> 4) - this.chunkZ;
@@ -298,14 +295,14 @@ public class ChunkCache implements LevelReader
     }
 
     @Override
-    public float getShade(final Direction direction, final boolean b)
-    {
-        return 0;
-    }
-
-    @Override
     public LevelLightEngine getLightEngine()
     {
         return null;
+    }
+
+    @Override
+    public net.minecraft.world.attribute.EnvironmentAttributeReader environmentAttributes()
+    {
+        return net.minecraft.world.attribute.EnvironmentAttributeReader.EMPTY;
     }
 }

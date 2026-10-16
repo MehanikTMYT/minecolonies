@@ -9,6 +9,9 @@ import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.Utils;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.server.permissions.Permission;
+import net.minecraft.server.permissions.PermissionLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
@@ -284,7 +287,8 @@ public class PermissionsView implements IPermissions
     @Override
     public boolean hasPermission(@NotNull final Player player, @NotNull final Action action)
     {
-        if (player.hasPermissions(IMinecoloniesAPI.getInstance().getConfig().getServer().permissionEventMinBypassPermLevel.get()))
+        if (player instanceof ServerPlayer && player.permissions().hasPermission(new Permission.HasCommandLevel(PermissionLevel.byId(
+          IMinecoloniesAPI.getInstance().getConfig().getServer().permissionEventMinBypassPermLevel.get()))) && player.isCreative())
         {
             return true;
         }

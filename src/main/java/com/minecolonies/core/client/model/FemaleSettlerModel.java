@@ -10,7 +10,7 @@ import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.*;
 
-public class FemaleSettlerModel extends CitizenModel<AbstractEntityCitizen>
+public class FemaleSettlerModel extends CitizenModel
 {
     public FemaleSettlerModel(final ModelPart part)
     {

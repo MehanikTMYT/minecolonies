@@ -11,8 +11,8 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.common.util.INBTSerializable;
+import net.minecraft.resources.Identifier;
+import com.minecolonies.api.util.INBTSerializable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -146,7 +146,9 @@ public interface IBuildingExtension extends IModuleContainer<IBuildingExtensionM
 
         public static ExtensionId deserializeNBT(final HolderLookup.Provider provider, final CompoundTag nbt)
         {
-            return new ExtensionId(BlockPosUtil.read(nbt, TAG_POS), BuildingExtensionRegistries.getBuildingExtensionRegistry().get(ResourceLocation.parse(nbt.getString(TAG_ID))));
+            final Identifier id = Identifier.parse(nbt.getStringOr(TAG_ID, ""));
+            return new ExtensionId(BlockPosUtil.read(nbt, TAG_POS), BuildingExtensionRegistries.getBuildingExtensionRegistry().get(id)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown building extension: " + id)).value());
         }
     }
 }

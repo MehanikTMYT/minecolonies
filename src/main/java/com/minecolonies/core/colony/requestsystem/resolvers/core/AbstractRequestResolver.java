@@ -52,7 +52,7 @@ public abstract class AbstractRequestResolver<R extends IRequestable> implements
     @Override
     public MutableComponent getRequesterDisplayName(@NotNull final IRequestManager manager, @NotNull final IRequest<?> request)
     {
-        return Component.literal("Request System");
+        return Component.translatable("com.minecolonies.port26.ui.resolver.request_system");
     }
 
     @Override

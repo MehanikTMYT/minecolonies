@@ -21,7 +21,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Tuple;
 import net.minecraft.world.item.*;
@@ -63,7 +63,7 @@ public class BuildingSmeltery extends AbstractBuilding
     /**
      * Key for min remainder at warehouse.
      */
-    public static final ISettingKey<IntSetting> MIN = new SettingKey<>(IntSetting.class, new ResourceLocation(com.minecolonies.api.util.constant.Constants.MOD_ID, "warehousemin"));
+    public static final ISettingKey<IntSetting> MIN = new SettingKey<>(IntSetting.class, Identifier.fromNamespaceAndPath(com.minecolonies.api.util.constant.Constants.MOD_ID, "warehousemin"));
 
     /**
      * Instantiates a new smeltery building.
@@ -76,7 +76,7 @@ public class BuildingSmeltery extends AbstractBuilding
         super(c, l);
         keepX.put(IColonyManager.getInstance().getCompatibilityManager()::isOre, new Tuple<>(Integer.MAX_VALUE, true));
         keepX.put(stack -> !ItemStackUtils.isEmpty(stack)
-                             && (stack.getItem() instanceof SwordItem || stack.getItem() instanceof DiggerItem || stack.getItem() instanceof ArmorItem)
+                             && (ItemStackUtils.isSword(stack) || ItemStackUtils.isDiggerTool(stack) || ItemStackUtils.isArmor(stack))
           , new Tuple<>(STUFF_TO_KEEP, true));
     }
 
@@ -169,7 +169,7 @@ public class BuildingSmeltery extends AbstractBuilding
         }
 
         @Override
-        protected boolean isPreTaughtRecipe(final IRecipeStorage storage, final Map<ResourceLocation, CustomRecipe> crafterRecipes)
+        protected boolean isPreTaughtRecipe(final IRecipeStorage storage, final Map<Identifier, CustomRecipe> crafterRecipes)
         {
             if (storage.getPrimaryOutput().isEmpty() && storage.getLootTable() != null)
             {
@@ -254,7 +254,7 @@ public class BuildingSmeltery extends AbstractBuilding
             if (item instanceof BlockItem)
             {
                 Block itemBlock = Block.byItem(item);
-                return itemBlock.getLootTable();
+                return itemBlock.getLootTable().orElse(null);
             }
             return null;
         }

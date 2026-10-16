@@ -3,6 +3,7 @@
         >
 
     <image source="minecolonies:textures/gui/guide/background.png" size="960 540" id="guide1"/>
+    <text id="title" pos="62 60" size="300 34" color="#D8D8D8" shadow="true" textscale="2.4" text="$(com.minecolonies.port26.ui.quick_guide)"/>
     <button id="confirm" pos="360 455" label="$(com.minecolonies.coremod.gui.workerhuts.guide.confirm)"/>
     <text id="questionmark" size="210 75" color="black" pos="80 363" textalign="MIDDLE" text="$(com.minecolonies.coremod.gui.workerhuts.guide.questionmark)"/>
     <text id="arrow" size="210 75" color="black" pos="637 22" textalign="MIDDLE" text="$(com.minecolonies.coremod.gui.workerhuts.guide.arrow)"/>

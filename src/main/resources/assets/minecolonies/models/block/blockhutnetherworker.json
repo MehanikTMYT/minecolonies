@@ -10,13 +10,13 @@
         "first": {
       "render_type": "solid",
             "textures": {
-                "0": "entity/piglin/zombified_piglin",
+                "0": "minecolonies:block/decor/entity/piglin/zombified_piglin",
                 "3": "block/netherite_block",
                 "4": "block/stripped_dark_oak_log",
                 "7": "block/stripped_dark_oak_log_top",
                 "8": "block/warped_planks",
                 "10": "block/obsidian",
-                "12": "entity/chest/normal",
+                "12": "minecolonies:block/decor/entity/chest/normal",
                 "13": "block/dark_oak_planks",
                 "16": "block/gold_block"
             },
@@ -484,7 +484,7 @@
         "second": {
       "render_type": "cutout",
             "textures": {
-                "11": "item/iron_pickaxe"
+                "11": "minecolonies:block/decor/item/iron_pickaxe"
             },
             "elements": [
                 {

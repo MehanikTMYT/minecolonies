@@ -35,17 +35,17 @@ public class CommandSetRank implements IMCOPCommand
         GameProfile profile;
         try
         {
-            profile = GameProfileArgument.getGameProfiles(context, PLAYERNAME_ARG).stream().findFirst().orElse(null);
+            profile = GameProfileArgument.getGameProfiles(context, PLAYERNAME_ARG).stream().findFirst().map(p -> new GameProfile(p.id(), p.name())).orElse(null);
         }
         catch (CommandSyntaxException e)
         {
             return 0;
         }
 
-        if (context.getSource().getServer().getPlayerList().getPlayer(profile.getId()) == null)
+        if (context.getSource().getServer().getPlayerList().getPlayer(profile.id()) == null)
         {
             // could not find player with given name.
-            context.getSource().sendSuccess(() -> Component.translatable(CommandTranslationConstants.COMMAND_PLAYER_NOT_FOUND, profile.getName()), true);
+            context.getSource().sendSuccess(() -> Component.translatable(CommandTranslationConstants.COMMAND_PLAYER_NOT_FOUND, profile.name()), true);
             return 0;
         }
 
@@ -71,9 +71,9 @@ public class CommandSetRank implements IMCOPCommand
             return 0;
         }
 
-        colony.getPermissions().setPlayerRank(profile.getId(), rankFound, colony.getWorld());
+        colony.getPermissions().setPlayerRank(profile.id(), rankFound, colony.getWorld());
         final String finalRankName = rankName;
-        context.getSource().sendSuccess(() -> Component.literal("Set player: " + profile.getName() + " to rank:" + finalRankName), true);
+        context.getSource().sendSuccess(() -> Component.literal("Set player: " + profile.name() + " to rank:" + finalRankName), true);
         return 1;
     }
 

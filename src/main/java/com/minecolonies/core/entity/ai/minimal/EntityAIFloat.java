@@ -6,6 +6,7 @@ import com.minecolonies.core.entity.pathfinding.navigation.MinecoloniesAdvancedP
 import com.minecolonies.core.entity.pathfinding.pathjobs.PathJobEscapeWater;
 import com.minecolonies.core.entity.pathfinding.pathresults.PathResult;
 import net.minecraft.core.BlockPos;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
@@ -39,7 +40,7 @@ public class EntityAIFloat extends FloatGoal
     @Override
     public void tick()
     {
-        if (!owner.getEyeInFluidType().isAir() && owner.getEyeInFluidType().canSwim(owner))
+        if (owner.isEyeInFluid(FluidTags.WATER))
         {
             if (owner.level().getBlockState(BlockPos.containing(owner.getEyePosition()).above()).isAir())
             {

@@ -72,7 +72,7 @@ public class StandardPlayerRequestResolver implements IPlayerRequestResolver
     @Override
     public boolean canResolveRequest(@NotNull final IRequestManager manager, final IRequest<?> requestToCheck)
     {
-        return !manager.getColony().getWorld().isClientSide;
+        return !manager.getColony().getWorld().isClientSide();
     }
 
     @Override
@@ -97,7 +97,7 @@ public class StandardPlayerRequestResolver implements IPlayerRequestResolver
     @Override
     public MutableComponent getRequesterDisplayName(@NotNull final IRequestManager manager, @NotNull final IRequest<?> request)
     {
-        return Component.literal("Player");
+        return Component.translatable("com.minecolonies.port26.ui.resolver.player");
     }
 
     @Override

@@ -3,6 +3,7 @@
 // Paste this class into your mod and generate all required imports
 package com.minecolonies.core.client.model;
 
+import com.minecolonies.api.client.render.modeltype.CitizenRenderState;
 import com.minecolonies.api.client.render.modeltype.CitizenModel;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import net.minecraft.client.model.HumanoidModel;
@@ -14,7 +15,7 @@ import org.jetbrains.annotations.NotNull;
 
 import static com.minecolonies.core.entity.ai.workers.service.EntityAIWorkDeliveryman.RENDER_META_BACKPACK;
 
-public class MaleCourierModel extends CitizenModel<AbstractEntityCitizen>
+public class MaleCourierModel extends CitizenModel
 {
     public MaleCourierModel(ModelPart root)
     {
@@ -56,18 +57,18 @@ public class MaleCourierModel extends CitizenModel<AbstractEntityCitizen>
     }
 
     @Override
-    public float getActualRotation(@NotNull final AbstractEntityCitizen entity)
+    public float getActualRotation(@NotNull final CitizenRenderState state)
     {
-        return entity.getPose() == Pose.SLEEPING || !entity.getRenderMetadata().contains(RENDER_META_BACKPACK) ? 0 : 0.1745F;
+        return state.pose == Pose.SLEEPING || !state.renderMetadata.contains(RENDER_META_BACKPACK) ? 0 : 0.1745F;
     }
 
     @Override
-    public void setupAnim(@NotNull final AbstractEntityCitizen entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch)
+    public void setupAnim(@NotNull final CitizenRenderState state)
     {
-        super.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+        super.setupAnim(state);
         body.y += 12;
 
-        final boolean showBackPack = entity.getPose() != Pose.SLEEPING && entity.getRenderMetadata().contains(RENDER_META_BACKPACK);
+        final boolean showBackPack = state.pose != Pose.SLEEPING && state.renderMetadata.contains(RENDER_META_BACKPACK);
         head.z = showBackPack ? -2.1f : 0;
         body.getChild("backpack").visible = showBackPack;
         leftArm.y = showBackPack ? 2f : 2.5f;
