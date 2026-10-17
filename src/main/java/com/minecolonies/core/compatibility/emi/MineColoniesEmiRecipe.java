@@ -21,6 +21,14 @@ import java.util.List;
  */
 public class MineColoniesEmiRecipe extends BasicEmiRecipe
 {
+    private IGenericRecipe sourceRecipe;
+
+    /** Typed source for addon teaching handlers; null for displays constructed without a generic recipe. */
+    public IGenericRecipe getSourceRecipe()
+    {
+        return sourceRecipe;
+    }
+
     private static final int SLOT_SIZE  = 18;
     private static final int SLOT_GAP   = 2;
     private static final int ARROW_GAP  = 22;
@@ -92,6 +100,14 @@ public class MineColoniesEmiRecipe extends BasicEmiRecipe
             inputs.add(toIngredient(alternatives));
         }
 
+        for (final var fluid : recipe.getFluidInputs())
+        {
+            if (!fluid.isEmpty())
+            {
+                inputs.add(EmiStack.of(fluid.getFluid(), fluid.getComponentsPatch(), fluid.getAmount()));
+            }
+        }
+
         final List<EmiStack> outputs = new ArrayList<>();
         for (final ItemStack stack : recipe.getAllMultiOutputs())
         {
@@ -108,7 +124,9 @@ public class MineColoniesEmiRecipe extends BasicEmiRecipe
         final Identifier id = Identifier.fromNamespaceAndPath(category.getId().getNamespace(),
           category.getId().getPath() + "/" + deterministicPath(recipe));
 
-        return new MineColoniesEmiRecipe(category, id, inputs, outputs);
+        final var result = new MineColoniesEmiRecipe(category, id, inputs, outputs);
+        result.sourceRecipe = recipe;
+        return result;
     }
 
     /**
@@ -126,6 +144,22 @@ public class MineColoniesEmiRecipe extends BasicEmiRecipe
     @NotNull
     private static String deterministicPath(@NotNull final IGenericRecipe recipe)
     {
+        // Fluid recipes may have identical item ids (and source ids) but differ in volume or components.
+        if (!recipe.getFluidInputs().isEmpty())
+        {
+            final var registries = net.minecraft.client.Minecraft.getInstance().level.registryAccess();
+            final var ops = registries.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
+            final var content = new net.minecraft.nbt.CompoundTag();
+            content.put("fluids", net.neoforged.neoforge.fluids.FluidStack.CODEC.listOf()
+                .encodeStart(ops, recipe.getFluidInputs()).getOrThrow());
+            content.put("items", ItemStack.OPTIONAL_CODEC.listOf().listOf()
+                .encodeStart(ops, recipe.getInputs()).getOrThrow());
+            content.put("outputs", ItemStack.OPTIONAL_CODEC.listOf()
+                .encodeStart(ops, recipe.getAllMultiOutputs()).getOrThrow());
+            // CompoundTag's SNBT visitor sorts keys; the digest is stable across reloads.
+            return "fluid/" + com.google.common.hash.Hashing.sha256()
+                .hashString(content.toString(), java.nio.charset.StandardCharsets.UTF_8);
+        }
         final Identifier recipeId = recipe.getRecipeId();
         if (recipeId != null)
         {

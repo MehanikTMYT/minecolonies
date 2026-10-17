@@ -85,6 +85,12 @@ public interface IGenericRecipe
     @NotNull
     List<List<ItemStack>> getInputs();
 
+    /** Optional fluid inputs, including exact amounts and components. Existing item-only recipes remain unchanged. */
+    default List<net.neoforged.neoforge.fluids.FluidStack> getFluidInputs()
+    {
+        return List.of();
+    }
+
     /**
      * Checks whether the given predicate matches the output item of this recipe.
      *
