@@ -145,9 +145,10 @@ public class MineColoniesEmiRecipe extends BasicEmiRecipe
     private static String deterministicPath(@NotNull final IGenericRecipe recipe)
     {
         // Fluid recipes may have identical item ids (and source ids) but differ in volume or components.
-        if (!recipe.getFluidInputs().isEmpty())
+        final var level = net.minecraft.client.Minecraft.getInstance().level;
+        if (!recipe.getFluidInputs().isEmpty() && level != null)
         {
-            final var registries = net.minecraft.client.Minecraft.getInstance().level.registryAccess();
+            final var registries = level.registryAccess();
             final var ops = registries.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
             final var content = new net.minecraft.nbt.CompoundTag();
             content.put("fluids", net.neoforged.neoforge.fluids.FluidStack.CODEC.listOf()
