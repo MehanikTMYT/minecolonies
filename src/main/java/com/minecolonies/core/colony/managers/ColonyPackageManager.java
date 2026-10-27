@@ -7,7 +7,7 @@ import com.minecolonies.api.util.ColonyUtils;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.WorldUtil;
 import com.minecolonies.core.colony.Colony;
-import com.minecolonies.core.colony.ColonyView;
+import com.minecolonies.core.colony.ColonyNetworkData;
 import com.minecolonies.core.colony.permissions.Permissions;
 import com.minecolonies.core.network.messages.PermissionsMessage;
 import com.minecolonies.core.network.messages.client.colony.ColonyViewMessage;
@@ -204,7 +204,7 @@ public class ColonyPackageManager implements IColonyPackageManager
         if (isDirty || !newSubscribers.isEmpty())
         {
             final RegistryFriendlyByteBuf colonyFriendlyByteBuf = new RegistryFriendlyByteBuf(Unpooled.buffer(), colony.getWorld().registryAccess());
-            ColonyView.serializeNetworkData(colony, colonyFriendlyByteBuf, !newSubscribers.isEmpty());
+            ColonyNetworkData.serializeNetworkData(colony, colonyFriendlyByteBuf, !newSubscribers.isEmpty());
             final Set<ServerPlayer> players = new HashSet<>();
             if (isDirty)
             {
