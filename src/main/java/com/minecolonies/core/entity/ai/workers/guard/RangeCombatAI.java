@@ -299,8 +299,7 @@ public class RangeCombatAI extends AttackMoveAI<EntityCitizen>
                                 // 'target' may be gone by then, so derive the level/damage source from the shooter.
                                 entityRayTraceResult.getEntity().hurtServer((ServerLevel) user.level(),
                                   user.level().damageSources().source(DamageSourceKeys.PIERCE, user),
-                                  (float) customArrowEntity.getConfiguredBaseDamage() * (float) marksManTrueDamageShare() * 10);
-                            }
+                                  (float) customArrowEntity.getConfiguredBaseDamage() * (float) marksManTrueDamageShare() * 10);                            }
 
                             return true;
                         });

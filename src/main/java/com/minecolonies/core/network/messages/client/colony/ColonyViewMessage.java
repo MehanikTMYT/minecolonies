@@ -65,7 +65,7 @@ public class ColonyViewMessage extends AbstractClientPlayMessage
         colonyId = buf.readInt();
         isNewSubscription = buf.readBoolean();
         dim = ResourceKey.create(Registries.DIMENSION, Identifier.parse(buf.readUtf(32767)));
-        colonyBuffer = new RegistryFriendlyByteBuf(new FriendlyByteBuf(Unpooled.wrappedBuffer(buf.readByteArray())), buf.registryAccess());
+        this.colonyBuffer = new RegistryFriendlyByteBuf(Unpooled.copiedBuffer(buf.readSlice(buf.readVarInt())), buf.registryAccess());
     }
 
     @Override
@@ -75,8 +75,10 @@ public class ColonyViewMessage extends AbstractClientPlayMessage
         buf.writeInt(colonyId);
         buf.writeBoolean(isNewSubscription);
         buf.writeUtf(dim.identifier().toString());
-        buf.writeByteArray(colonyBuffer.array());
-    }
+
+        int len = colonyBuffer.readableBytes();
+        buf.writeVarInt(len);
+        buf.writeBytes(colonyBuffer, colonyBuffer.readerIndex(), len);    }
 
     @Override
     protected void onExecute(final IPayloadContext ctxIn, @Nullable final Player player)

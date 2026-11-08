@@ -56,7 +56,7 @@ public class ColonyViewWorkOrderMessage extends AbstractClientPlayMessage
         super(buf, type);
         colonyId = buf.readInt();
         dimension = ResourceKey.create(Registries.DIMENSION, Identifier.parse(buf.readUtf(32767)));
-        workOrderBuffer = new RegistryFriendlyByteBuf(new FriendlyByteBuf(Unpooled.wrappedBuffer(buf.readByteArray())), buf.registryAccess());
+        this.workOrderBuffer = new RegistryFriendlyByteBuf(Unpooled.copiedBuffer(buf.readSlice(buf.readVarInt())), buf.registryAccess());
     }
 
     @Override
@@ -65,8 +65,10 @@ public class ColonyViewWorkOrderMessage extends AbstractClientPlayMessage
         workOrderBuffer.resetReaderIndex();
         buf.writeInt(colonyId);
         buf.writeUtf(dimension.identifier().toString());
-        buf.writeByteArray(workOrderBuffer.array());
-    }
+
+        int len = workOrderBuffer.readableBytes();
+        buf.writeVarInt(len);
+        buf.writeBytes(workOrderBuffer, workOrderBuffer.readerIndex(), len);    }
 
     @Override
     protected void onExecute(final IPayloadContext ctxIn, final Player player)

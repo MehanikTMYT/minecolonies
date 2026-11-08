@@ -1,0 +1,1 @@
+      1 [main/ERROR] [ne.ne.fm.lo.mo.lo.NeoForgeDevDistCleaner/DISTXFORM]: Attempted to load class net.minecraft.client.renderer.entity.SalmonRenderer which is not present on the dedicated server

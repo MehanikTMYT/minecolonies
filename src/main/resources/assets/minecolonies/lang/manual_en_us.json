@@ -2789,6 +2789,8 @@
   "com.minecolonies.port26.ui.grave": "Grave",
   "com.minecolonies.port26.ui.building_protected": "This building is registered in a colony and can't be broken. Use \"Pick up building\" in its building window.",
   "com.minecolonies.port26.ui.quick_guide": "Quick Guide",
-  "com.minecolonies.coremod.gui.chat.khaoskatze": "There was a cat in the woods, I followed her here. Have you seen her?",
-  "com.minecolonies.coremod.gui.chat.shiny": "You call me Akhula of Akhea. Whence i came from? Akhea; the name of a clan, a wealthy city and province. From there we sailed to share that wealth and prosperity. The sea was peaceful, until the weather was not. The last thing i saw was a rope snapping at me, i woke up on a beach after. The only reason i survived to find myself here must be divine intervention, so i shall seek to fulfil my purpose in this very city."
+  "com.minecolonies.coremod.gui.workerhuts.graveyard.plotsfilled": "%s of %s Plots Filled",
+  "com.minecolonies.coremod.journeymap.options.borderloadedstyle": "Force-Loaded Border",
+  "com.minecolonies.coremod.journeymap.options.borderloadedstyle.tooltip": "Colony force-loaded border display style for the fullscreen and web maps",
+  "com.minecolonies.coremod.setting.minecolonies:playmusic": "Play Music at Night"
 }

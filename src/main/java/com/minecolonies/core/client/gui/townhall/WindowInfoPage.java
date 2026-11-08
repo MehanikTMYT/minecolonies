@@ -10,7 +10,6 @@ import com.minecolonies.api.colony.colonyEvents.descriptions.IBuildingEventDescr
 import com.minecolonies.api.colony.colonyEvents.descriptions.ICitizenEventDescription;
 import com.minecolonies.api.colony.colonyEvents.descriptions.IColonyEventDescription;
 import com.minecolonies.api.colony.workorders.IWorkOrder;
-import com.minecolonies.api.colony.workorders.IWorkOrder;
 import com.minecolonies.api.colony.workorders.IWorkOrderView;
 import com.minecolonies.api.util.MessageUtils;
 import com.minecolonies.core.colony.buildings.views.AbstractBuildingBuilderView;

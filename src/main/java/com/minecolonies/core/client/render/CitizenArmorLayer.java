@@ -146,7 +146,6 @@ public class CitizenArmorLayer extends HumanoidArmorLayer<CitizenRenderState, Ci
                 .withStyle(ChatFormatting.RED));
         }
     }
-
     /**
      * Render the head of the player skin a citizen was given, in place of the model head.
      */
@@ -159,18 +158,15 @@ public class CitizenArmorLayer extends HumanoidArmorLayer<CitizenRenderState, Ci
     {
         final UUID textureUUID = state.customTextureUUID;
         final ResolvableProfile gameProfile = gameProfileMap.get(textureUUID);
-        if (gameProfile == null)
-        {
+        if (gameProfile == null)        {
             // Request the profile once and draw nothing until it arrives.
             gameProfileMap.put(textureUUID, ResolvableProfile.createUnresolved(textureUUID));
             Util.backgroundExecutor().execute(() ->
             {
                 final Minecraft minecraft = Minecraft.getInstance();
                 final ProfileResult profile = minecraft.services().sessionService().fetchProfile(textureUUID, true);
-                if (profile != null)
-                {
-                    minecraft.submit(() -> gameProfileMap.put(textureUUID, ResolvableProfile.createResolved(profile.profile())));
-                }
+                if (profile != null)                {
+                    minecraft.submit(() -> gameProfileMap.put(textureUUID, ResolvableProfile.createResolved(profile.profile())));                }
             });
             return;
         }
@@ -192,5 +188,4 @@ public class CitizenArmorLayer extends HumanoidArmorLayer<CitizenRenderState, Ci
           lightCoords, OverlayTexture.NO_OVERLAY, state.outlineColor, null);
 
         poseStack.popPose();
-    }
-}
+    }}

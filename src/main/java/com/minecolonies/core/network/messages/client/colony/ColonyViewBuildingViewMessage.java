@@ -65,7 +65,7 @@ public class ColonyViewBuildingViewMessage extends AbstractClientPlayMessage
         colonyId = buf.readInt();
         buildingId = buf.readBlockPos();
         dimension = ResourceKey.create(Registries.DIMENSION, Identifier.parse(buf.readUtf(32767)));
-        buildingData = new RegistryFriendlyByteBuf(new FriendlyByteBuf(Unpooled.wrappedBuffer(buf.readByteArray())), buf.registryAccess());
+        this.buildingData = new RegistryFriendlyByteBuf(Unpooled.copiedBuffer(buf.readSlice(buf.readVarInt())), buf.registryAccess());
     }
 
     @Override
@@ -75,8 +75,10 @@ public class ColonyViewBuildingViewMessage extends AbstractClientPlayMessage
         buf.writeInt(colonyId);
         buf.writeBlockPos(buildingId);
         buf.writeUtf(dimension.identifier().toString());
-        buf.writeByteArray(buildingData.array());
-    }
+
+        int len = buildingData.readableBytes();
+        buf.writeVarInt(len);
+        buf.writeBytes(buildingData, buildingData.readerIndex(), len);    }
 
     @Override
     protected void onExecute(final IPayloadContext ctxIn, final Player player)

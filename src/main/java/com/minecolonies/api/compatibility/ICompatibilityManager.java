@@ -17,10 +17,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 
 /**
@@ -221,6 +218,12 @@ public interface ICompatibilityManager
      * @return true if so.
      */
     boolean isLuckyBlock(final Block block);
+
+    /**
+     * Get copy of leave to sapling map.
+     * @return the copy.
+     */
+    HashMap<Block, ItemStorage> getLeavesToSaplingMapCopy();
 
     /**
      * Get the creative tab for a stack.

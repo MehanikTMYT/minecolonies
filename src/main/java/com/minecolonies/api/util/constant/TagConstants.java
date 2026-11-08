@@ -45,6 +45,7 @@ public final class TagConstants
     public static final Identifier REPAIRS_NOTHING           = Identifier.fromNamespaceAndPath(MOD_ID, "repairs_nothing");
     public static final Identifier MESHES                    = Identifier.fromNamespaceAndPath(MOD_ID, "meshes");
     public static final Identifier HOSTILE                   = Identifier.fromNamespaceAndPath(MOD_ID, "hostile");
+    public static final Identifier RAIDER_TARGETS            = Identifier.fromNamespaceAndPath(MOD_ID, "raider_targets");
     public static final Identifier BREAKABLE_ORE             = Identifier.fromNamespaceAndPath(MOD_ID, "breakable_ore");
     public static final Identifier RAW_ORE                   = Identifier.fromNamespaceAndPath(MOD_ID, "raw_ore");
     public static final Identifier MOB_ATTACK_BLACKLIST      = Identifier.fromNamespaceAndPath(MOD_ID, "mob_attack_blacklist");
@@ -59,7 +60,6 @@ public final class TagConstants
     public static final Identifier RAW_MEAT                  = Identifier.fromNamespaceAndPath(MOD_ID, "rawmeat");
     public static final Identifier FEED                      = Identifier.fromNamespaceAndPath(MOD_ID, "feed");
     public static final Identifier LEATHER                   = Identifier.fromNamespaceAndPath(MOD_ID, "leather");
-
     public static final String CRAFTING_BAKER                = ModJobs.BAKER_ID.getPath();
     public static final String CRAFTING_BLACKSMITH           = ModJobs.BLACKSMITH_ID.getPath();
     public static final String CRAFTING_COOK = ModJobs.COOK_ID.getPath();

@@ -879,7 +879,6 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
         final float mountArmorBonus = (float) animalColonyHandler.getColony().getResearchManager()
             .getResearchEffects()
             .getEffectStrength(ResearchConstants.MOUNT_ARMOR);
-
         if (mountArmorBonus > 0.0f)
         {
             damageAmount = damageAmount * (1.0f - mountArmorBonus);
@@ -891,8 +890,7 @@ public class CavalryHorseEntity extends Horse implements IManagedAnimal<CavalryH
             animalData.markDirty();
         }
         
-        return super.hurtServer(level, damageSource, damageAmount);
-    }
+        return super.hurtServer(level, damageSource, damageAmount);    }
 
     /**
      * Adds additional data to the CompoundTag that is specific to this entity type. This data is saved to disk and can be read back in
